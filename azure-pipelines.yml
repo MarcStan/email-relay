@@ -1,0 +1,111 @@
+# build definition for function app
+
+resources:
+- repo: self
+  clean: true
+trigger:
+  batch: true
+  branches:
+    include:
+    - master
+schedules:
+- cron: "0 17 * * Fri"
+  displayName: Weekly build
+  branches:
+    include:
+    - master
+
+stages:
+- stage: build
+  jobs:
+  - job: build
+    pool:
+      name: 'Hosted Windows 2019 with VS2019'
+    variables:
+      BuildConfiguration: 'release'
+    steps:
+    - checkout: self
+
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '2.2.x'
+
+    - task: DotNetCoreCLI@2
+      displayName: Build
+      inputs:
+        projects: '**/*.csproj'
+        arguments: '--configuration $(BuildConfiguration) --no-cache'
+    
+    - task: DotNetCoreCLI@2
+      displayName: Test
+      inputs:
+        command: test
+        projects: '**/*Tests/*.csproj'
+        arguments: '--configuration $(BuildConfiguration)'
+
+    - task: DotNetCoreCLI@2
+      displayName: Publish
+      inputs:
+        command: publish
+        publishWebProjects: false
+        projects: '**/EmailRelay.csproj'
+        arguments: '--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)'
+        zipAfterPublish: false
+
+    - task: PublishPipelineArtifact@0
+      displayName: 'Publish build Artifact'
+      inputs:
+        targetPath: '$(build.artifactstagingdirectory)'
+        artifactName: function
+
+    - task: PublishPipelineArtifact@0
+      inputs:
+        targetPath: deploy
+        artifactName: deploy
+
+- stage: deploy
+  jobs:
+  - job: infra
+    pool:
+      name: 'Hosted Windows 2019 with VS2019'
+    variables:
+      ResourceGroupName: 'email-relay'
+
+    steps:
+    - task: DownloadPipelineArtifact@1
+      inputs:
+        artifactName: deploy
+        targetPath: '$(System.ArtifactsDirectory)'
+
+    - task: AzurePowerShell@4
+      displayName: 'Deploy infrastructure'
+      inputs:
+        azureSubscription: 'Opensource Deployments'
+        ScriptPath: '$(System.ArtifactsDirectory)/Deploy.ps1'
+        ScriptArguments: '-ResourceGroupName $(ResourceGroupName)'
+        azurePowerShellVersion: LatestVersion
+
+  - job: deploy
+    dependsOn: infra
+    pool:
+      name: 'Hosted Windows 2019 with VS2019'
+    variables:
+      ResourceGroupName: 'email-relay'
+
+    steps:
+    - task: DownloadPipelineArtifact@1
+      inputs:
+        artifactName: function
+        targetPath: '$(System.ArtifactsDirectory)'
+
+    - task: AzureFunctionApp@1
+      displayName: 'Deploy Azure Function App'
+      inputs:
+        azureSubscription: 'Opensource Deployments'
+        appType: functionApp
+        appName: '$(ResourceGroupName)'
+        # settings injected via keyvault and/or Azure DevOps secret variables
+        appSettings: "-RelayTargetEmail $(RelayTargetEmail) -SendgridApiKey $(SendgridApiKey)"
+        package: '$(System.ArtifactsDirectory)/EmailRelay'
+        deploymentMethod: runFromPackage
