@@ -2,6 +2,10 @@
 
 Uses Azure functions to process the webhook from Sendgrid Inbound Parse and to relay email.
 
+[Go to release](https://dev.azure.com/marcstanlive/Opensource/_build/definition?definitionId=33) 
+
+![HostMerger](https://dev.azure.com/marcstanlive/Opensource/_apis/build/status/33)
+
 Uses Sendgrid [Inbound Parse Webhook](https://sendgrid.com/docs/for-developers/parsing-email/inbound-email/) to capture all incoming emails sent to a specific domain and then:
 
 * forwards them to another email and/or
