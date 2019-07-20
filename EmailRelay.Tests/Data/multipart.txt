@@ -1,0 +1,34 @@
+﻿--xYzZY
+Content-Disposition: form-data; name="attachments"
+
+1
+--xYzZY
+Content-Disposition: form-data; name="subject"
+
+Subject1
+--xYzZY
+Content-Disposition: form-data; name="to"
+
+"marc@marcstan.net" <marc@marcstan.net>
+--xYzZY
+Content-Disposition: form-data; name="attachment-info"
+
+{"attachment1":{"filename":"en.txt","name":"en.txt","type":"text/plain"}}
+--xYzZY
+Content-Disposition: form-data; name="from"
+
+Marc Stan <marcstan@live.com>
+--xYzZY
+Content-Disposition: form-data; name="text"
+
+Content1
+--xYzZY
+Content-Disposition: form-data; name="attachment1"; filename="en.txt"
+Content-Type: text/plain
+
+this is plaintext
+--xYzZY
+Content-Disposition: form-data; name="charsets"
+
+{"to":"UTF-8","subject":"UTF-8","from":"UTF-8","text":"iso-8859-1"}
+--xYzZY--

@@ -19,4 +19,10 @@
     <ProjectReference Include="..\EmailRelay.Logic\EmailRelay.Logic.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Data\multipart.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
