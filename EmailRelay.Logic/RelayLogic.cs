@@ -55,7 +55,7 @@ namespace EmailRelay.Logic
                     _log.LogCritical($"Unauthorized sender {email.From} tried to send email in the name of the domain via subject: {email.Subject}");
                     // relay to target with warning
                     await SendEmailAsync(to, relayTargetEmail, $"[WARNING] {subject.Prefix}Relay for {from}: {subject.Subject}",
-                        $"Someone tried to send an email in the name of the domain by using the 'Relay for {email.To}' subject. Their email was: {from}. Original message below.\r\n\r\n\r\n{email.Html ?? email.Text}", email.Attachments, cancellationToken);
+                        $"Someone tried to send an email in the name of the domain by using the 'Relay for {to}' subject. Their email was: {from}. Original message below.<br /><br />{email.Html ?? email.Text}", email.Attachments, cancellationToken);
                     return;
                 }
                 // send in name of the domain

@@ -34,7 +34,7 @@ You can also chose to only enable this system on a subdomain (e.g. foo.example.c
 
 # Known issues
 
-* attachment names with [non ascii characters are wrongly encoded](https://github.com/sendgrid/sendgrid-go/issues/362) (the content is always correctly encoded, though)
+* attachment names with [non ascii characters are wrongly encoded if sent via sendgrid](https://github.com/sendgrid/sendgrid-go/issues/362) (the content is always correctly encoded, though)
 
 # Setup
 
