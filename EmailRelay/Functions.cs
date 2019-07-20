@@ -1,13 +1,16 @@
 using EmailRelay.Logic;
+using EmailRelay.Logic.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using SendGrid;
-using SendGrid.Helpers.Mail;
 using System;
+using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,8 +25,15 @@ namespace EmailRelay
             ILogger log,
             CancellationToken cancellationToken)
         {
-            var parser = new HttpFormDataParser();
-            var result = parser.Deserialize(req.Form);
+            Email email;
+            using (var stream = new MemoryStream())
+            {
+                // body can only be read once
+                req.Body.CopyTo(stream);
+                stream.Position = 0;
+                var parser = new SendgridEmailParser();
+                email = parser.Parse(stream);
+            }
             try
             {
                 var config = LoadConfig(context.FunctionAppDirectory, log);
@@ -38,21 +48,32 @@ namespace EmailRelay
                     var auditLogger = new BlobStoragePersister(config["AzureWebJobsStorage"], container);
 
                     var d = DateTimeOffset.UtcNow;
-                    // one folder per day is fine for now
-                    var id = $"{d.ToString("yyyy-MM")}/{d.ToString("dd")}/{d.ToString("HH-mm-ss")}_{Uri.EscapeDataString($"{result.From} - {result.Subject}")}";
+                    // one folder per day is fine for now 
+                    var id = $"{d.ToString("yyyy-MM")}/{d.ToString("dd")}/{d.ToString("HH-mm-ss")}_{email.From.Email} - {email.Subject}.json";
                     await auditLogger.PersistAsync(id, dict =>
                     {
-                        dict["from"] = result.From;
-                        dict["to"] = result.To;
-                        dict["subject"] = result.Subject;
-                        dict["content"] = result.Content;
+                        dict["from"] = email.From.Email;
+                        dict["to"] = string.Join(";", email.To.Select(_ => _.Email));
+                        dict["cc"] = string.Join(";", email.Cc.Select(_ => _.Email));
+                        dict["subject"] = email.Subject;
+                        dict["content"] = email.Html ?? email.Text;
+                        dict["email"] = JsonConvert.SerializeObject(email);
                     });
                 }
                 if (!string.IsNullOrEmpty(target))
                 {
-                    var client = new SendGridClient(config["SendgridApiKey"]);
-                    var mail = MailHelper.CreateSingleEmail(new EmailAddress(result.From), new EmailAddress(target, $"via {result.To}"), result.Subject, null, result.Content);
-                    await client.SendEmailAsync(mail, cancellationToken);
+                    var domain = config["Domain"];
+                    var key = config["SendgridApiKey"];
+                    if (!string.IsNullOrEmpty(target) &&
+                        string.IsNullOrEmpty(domain))
+                        throw new NotSupportedException("Domain must be set as well when relay is used.");
+                    if (!string.IsNullOrEmpty(target) &&
+                        string.IsNullOrEmpty(key))
+                        throw new NotSupportedException("SendgridApiKey must be set as well when relay is used.");
+
+                    var client = new SendGridClient(key);
+                    var relay = new RelayLogic(client, log);
+                    await relay.RelayAsync(email, target, domain, cancellationToken);
                 }
             }
             catch (Exception e)
