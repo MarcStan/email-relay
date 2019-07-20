@@ -45,12 +45,12 @@ namespace EmailRelay
                 }
                 if (!string.IsNullOrEmpty(container))
                 {
-                    var auditLogger = new BlobStoragePersister(config["AzureWebJobsStorage"], container);
+                    IPersister auditLogger = new BlobStoragePersister(config["AzureWebJobsStorage"], container);
 
                     var d = DateTimeOffset.UtcNow;
                     // one folder per day is fine for now 
-                    var id = $"{d.ToString("yyyy-MM")}/{d.ToString("dd")}/{d.ToString("HH-mm-ss")}_{email.From.Email} - {email.Subject}.json";
-                    await auditLogger.PersistAsync(id, dict =>
+                    var id = $"{d.ToString("yyyy-MM")}/{d.ToString("dd")}/{d.ToString("HH-mm-ss")}_{email.From.Email} - {email.Subject}";
+                    await auditLogger.PersistJsonAsync($"{id}.json", dict =>
                     {
                         dict["from"] = email.From.Email;
                         dict["to"] = string.Join(";", email.To.Select(_ => _.Email));
@@ -59,6 +59,8 @@ namespace EmailRelay
                         dict["content"] = email.Html ?? email.Text;
                         dict["email"] = JsonConvert.SerializeObject(email);
                     });
+                    // save all attachments in subfolder
+                    await Task.WhenAll(email.Attachments.Select(a => auditLogger.PersistAsync($"{id} (Attachments)/{a.FileName}", Convert.FromBase64String(a.Base64Data))));
                 }
                 if (!string.IsNullOrEmpty(target))
                 {

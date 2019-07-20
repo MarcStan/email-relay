@@ -8,11 +8,11 @@ Send & receive emails via an azure function. Processes the Sendgrid Inbound Pars
 
 # Motivation
 
-I recently moved from a regular app service to [storage account based hosting](https://marcstan.net/blog/2019/07/12/Static-websites-via-Azure-Storage-and-CDN/). In the process I broke my MX records and couldn't figure out quickly how to fix them. Since I [was aware of Inbound Parse](https://github.com/MarcStan/EmailBugTracker) I decided to throw together a small PoC, whether a "free" (as in freeloader) mail system via sendgrid is possible. After 1 hour the answer was yes; and this is the (somewhat) polished result.
+I recently moved from a regular app service to [storage account based static websites](https://marcstan.net/blog/2019/07/12/Static-websites-via-Azure-Storage-and-CDN/). In the process I broke my MX records and couldn't figure out quickly how to fix them. Since I [was aware of Inbound Parse](https://github.com/MarcStan/EmailBugTracker) I decided to throw together a small PoC, whether a "free" (as in freeloader) mail system via sendgrid is possible. After 1 hour the answer was yes; and this is the (somewhat) polished result.
 
 # Features
 
-* works for domains that don't have mail packages
+* works for domains even without a mail package
 * receive emails for a domain at your private email address (using Sendgrid Inbound Parse)
 * send emails in the name of the domain by replying back to the domain from your private email address
 
@@ -26,7 +26,7 @@ You can also chose to only enable this system on a subdomain (e.g. foo.example.c
 
 # Limitations
 
-* CC/BCC are lost for relayed emails (but are visible in the blob storage)
+* CC/BCC are lost for relayed emails (but are visible in the blob storage if enabled)
 * inline content is **currently not supported** (all media will be sent as regular attachments)
 * Reply all/to multiple doesn't work, as each email goes through your domain, so only one recipient at a time is possible
 * you can only use one email account as the sender/recipient for all emails (set via `EmailRelayTarget`)
@@ -42,7 +42,7 @@ You must first setup a Sendgrid account and connect your domain (make sure that 
 
 You can follow [their documentation](https://sendgrid.com/docs/ui/account-and-settings/how-to-set-up-domain-authentication/) to setup domain authentication.
 
-Before you deploy the azure function, be sure to set the ResourceGroupName variables (2x) and to customize the `appSettings` of the azure function deployment task in the yml file:
+Before you deploy the azure function, be sure to set the ResourceGroupName variables (2x) and to customize the `appSettings` of the azure function deployment task in the [azure-pipelines.yml](./azure-pipelines.yml) file:
 
 * `SendgridApiKey` - key with at least `Mail Send` permissions in your Sendgrid account
 * `RelayTargetEmail` - if set all emails sent to the domain will be forwarded to this email
