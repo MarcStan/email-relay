@@ -37,8 +37,9 @@ namespace EmailRelay.Logic
         {
             if (!domain.StartsWith("@"))
                 domain = "@" + domain;
-            // only support one recipient right now
+            // only supports one recipient right now
             var recipients = email.To.Concat(email.Cc).Select(e => e.Email).Distinct();
+            var from = email.From.Email;
             // find the first @domain email as we'll be sending in its name
             // important to match by domain as user could CC any number of others and put domain not-first
             var to = recipients.FirstOrDefault(_ => _.EndsWith(domain, StringComparison.OrdinalIgnoreCase)) ?? throw new NotSupportedException($"Unable to process email without at least one {domain} entry");
@@ -48,13 +49,13 @@ namespace EmailRelay.Logic
             if (!string.IsNullOrEmpty(subject.RelayTarget))
             {
                 // safety check, we don't want external senders to be able to send as the domain
-                if (!email.From.Email.Equals(relayTargetEmail, StringComparison.OrdinalIgnoreCase))
+                if (!from.Equals(relayTargetEmail, StringComparison.OrdinalIgnoreCase))
                 {
                     // possibly external user tried to send email log and abort
                     _log.LogCritical($"Unauthorized sender {email.From} tried to send email in the name of the domain via subject: {email.Subject}");
                     // relay to target with warning
-                    await SendEmailAsync(to, relayTargetEmail, $"[WARNING] {subject.Prefix}Relay for {email.From}: {subject.Subject}",
-                        $"Someone tried to send an email in the name of the domain by using the 'Relay for {email.To}' subject. Their email was: {email.From}. Original message below.\r\n\r\n\r\n{email.Html ?? email.Text}", email.Attachments, cancellationToken);
+                    await SendEmailAsync(to, relayTargetEmail, $"[WARNING] {subject.Prefix}Relay for {from}: {subject.Subject}",
+                        $"Someone tried to send an email in the name of the domain by using the 'Relay for {email.To}' subject. Their email was: {from}. Original message below.\r\n\r\n\r\n{email.Html ?? email.Text}", email.Attachments, cancellationToken);
                     return;
                 }
                 // send in name of the domain
@@ -63,7 +64,7 @@ namespace EmailRelay.Logic
             else
             {
                 // regular email by external user -> relay to target
-                await SendEmailAsync(to, relayTargetEmail, $"{subject.Prefix}Relay for {email.From}: {subject.Subject}", email.Html ?? email.Text, email.Attachments, cancellationToken);
+                await SendEmailAsync(to, relayTargetEmail, $"{subject.Prefix}Relay for {from}: {subject.Subject}", email.Html ?? email.Text, email.Attachments, cancellationToken);
             }
         }
 

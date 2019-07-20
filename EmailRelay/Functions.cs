@@ -25,24 +25,24 @@ namespace EmailRelay
             ILogger log,
             CancellationToken cancellationToken)
         {
-            Email email;
-            using (var stream = new MemoryStream())
-            {
-                // body can only be read once
-                req.Body.CopyTo(stream);
-                stream.Position = 0;
-                var parser = new SendgridEmailParser();
-                email = parser.Parse(stream);
-            }
             try
             {
                 var config = LoadConfig(context.FunctionAppDirectory, log);
 
-                var container = config["ContainerName"];
+                var container = config["ArchiveContainerName"];
                 var target = config["RelayTargetEmail"];
                 if (string.IsNullOrEmpty(container) && string.IsNullOrEmpty(target))
-                    throw new NotSupportedException("Neither email target nor container name where set. Please set either ContainerName or RelayTargetEmail");
+                    throw new NotSupportedException("Neither email target nor container name where set. Please set either ArchiveContainerName or RelayTargetEmail");
 
+                Email email;
+                using (var stream = new MemoryStream())
+                {
+                    // body can only be read once
+                    req.Body.CopyTo(stream);
+                    stream.Position = 0;
+                    var parser = new SendgridEmailParser();
+                    email = parser.Parse(stream);
+                }
                 if (!string.IsNullOrEmpty(container))
                 {
                     var auditLogger = new BlobStoragePersister(config["AzureWebJobsStorage"], container);
@@ -75,13 +75,14 @@ namespace EmailRelay
                     var relay = new RelayLogic(client, log);
                     await relay.RelayAsync(email, target, domain, cancellationToken);
                 }
+
+                return new OkResult();
             }
             catch (Exception e)
             {
                 log.LogCritical(e, "Failed to process request!");
                 return new BadRequestResult();
             }
-            return new OkResult();
         }
 
         /// <summary>
@@ -89,19 +90,11 @@ namespace EmailRelay
         /// </summary>
         private static IConfiguration LoadConfig(string workingDirectory, ILogger log)
         {
-            try
-            {
-                var builder = new ConfigurationBuilder()
-                .SetBasePath(workingDirectory)
-                .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
-                .AddEnvironmentVariables();
-                return builder.Build();
-            }
-            catch (Exception e)
-            {
-                log.LogCritical(e, $"Failed accessing the keyvault: '{e.Message}'. Possible reason: You are debugging locally (in which case you must add your user account to the keyvault access policies manually). Note that the infrastructure deployment will reset the keyvault policies to only allow the azure function MSI! More details on local fallback here: https://docs.microsoft.com/en-us/azure/key-vault/service-to-service-authentication#local-development-authentication");
-                throw;
-            }
+            var builder = new ConfigurationBuilder()
+            .SetBasePath(workingDirectory)
+            .AddJsonFile("local.settings.json", optional: true)
+            .AddEnvironmentVariables();
+            return builder.Build();
         }
     }
 }

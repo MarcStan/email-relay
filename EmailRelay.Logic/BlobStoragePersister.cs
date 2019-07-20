@@ -19,14 +19,13 @@ namespace EmailRelay.Logic
             _containerName = containerName;
         }
 
-        public async Task PersistAsync(string eventName, Action<Dictionary<string, string>> dict = null)
+        public async Task PersistAsync(string blobName, Action<Dictionary<string, string>> dict = null)
         {
-            var blob = await GetBlobAsync($"{eventName}.json");
+            var blob = await GetBlobAsync(blobName);
             var data = new Dictionary<string, string>();
             dict?.Invoke(data);
             await blob.UploadTextAsync(JsonConvert.SerializeObject(new
             {
-                eventType = eventName,
                 data
             }, Formatting.Indented));
         }

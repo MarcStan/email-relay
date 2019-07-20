@@ -10,6 +10,7 @@ trigger:
     - master
 schedules:
 - cron: "0 17 * * Fri"
+  always: true
   displayName: Weekly build
   branches:
     include:
@@ -106,6 +107,6 @@ stages:
         appType: functionApp
         appName: '$(ResourceGroupName)'
         # settings injected via keyvault and/or Azure DevOps secret variables
-        appSettings: "-RelayTargetEmail $(RelayTargetEmail) -SendgridApiKey $(SendgridApiKey)"
+        appSettings: "-ArchiveContainerName emails -RelayTargetEmail $(RelayTargetEmail) -SendgridApiKey $(SendgridApiKey)"
         package: '$(System.ArtifactsDirectory)/EmailRelay'
         deploymentMethod: runFromPackage
