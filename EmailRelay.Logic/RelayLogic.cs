@@ -36,41 +36,63 @@ namespace EmailRelay.Logic
         /// <param name="domain"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task RelayAsync(Email email, string relayTargetEmail, string domain, CancellationToken cancellationToken)
+        public async Task RelayAsync(Email email, string relayTargetEmail, string domain, bool canSendAsDomain, CancellationToken cancellationToken)
         {
+            // @ required or else "example.com" would match @foo.example.com" as well
             if (!domain.StartsWith("@"))
                 domain = "@" + domain;
-            // only supports one recipient right now
-            var recipients = email.To.Concat(email.Cc).Select(e => e.Email).Distinct();
+
             var from = email.From.Email;
+
+            // only supports one recipient right now
             // find the first @domain email as we'll be sending in its name
             // important to match by domain as user could CC any number of others and put domain not-first
+            var recipients = email.To.Concat(email.Cc).Select(e => e.Email).Distinct();
             var to = recipients.FirstOrDefault(_ => _.EndsWith(domain, StringComparison.OrdinalIgnoreCase)) ?? throw new NotSupportedException($"Unable to process email without at least one {domain} entry");
 
             var subject = _subjectParser.Parse(email.Subject);
-            // check if subject contains "Relay for email"
-
-            if (!string.IsNullOrEmpty(subject.RelayTarget))
-            {
-                // safety check, we don't want external senders to be able to send as the domain
-                var auth = IsAuthorizedSender(email, relayTargetEmail);
-                if (auth != RelayAuthResult.Authorized)
-                {
-                    // possibly external user tried to send email log and abort
-                    _log.LogCritical($"Unauthorized sender {from} tried to send email in the name of the domain via subject: {email.Subject}. Auth result was {auth} (SPF: {email.Spf}, DKIM: {email.Dkim})");
-                    // relay to target with warning
-                    await SendEmailAsync(to, relayTargetEmail, $"[WARNING] {subject.Prefix}{_subjectParser.Prefix} {(auth != RelayAuthResult.InvalidSender ? "(SPOOFED) " : "") + from}: {subject.Subject}",
-                        $"Someone tried to send an email in the name of the domain by using the '{_subjectParser.Prefix} {to}' subject. Their email was: {from}. <br />Auth result was {auth} (SPF: {email.Spf}, DKIM: {email.Dkim}). Original message below.<br /><br />{email.Html ?? email.Text}", email.Attachments, cancellationToken);
-                    return;
-                }
-                // send in name of the domain
-                await SendEmailAsync(to, subject.RelayTarget, subject.Prefix + subject.Subject, email.Html ?? email.Text, email.Attachments, cancellationToken);
-            }
-            else
+            // check if subject contains required prefix "Relay for email"
+            // if not, then the relay target will be null
+            if (string.IsNullOrEmpty(subject.RelayTarget))
             {
                 // regular email by external user -> relay to target
-                await SendEmailAsync(to, relayTargetEmail, $"{subject.Prefix}{_subjectParser.Prefix} {from}: {subject.Subject}", email.Html ?? email.Text, email.Attachments, cancellationToken);
+                await SendEmailAsync(to, relayTargetEmail,
+                    $"{subject.Prefix}{_subjectParser.Prefix} {from}: {subject.Subject}",
+                    email.Html ?? email.Text,
+                    email.Attachments,
+                    cancellationToken);
+                return;
             }
+
+            // sending as domain since we have a relaytarget
+            if (!canSendAsDomain)
+            {
+                await SendEmailAsync(to, relayTargetEmail, $"[WARNING] {email.Subject}",
+                    "Sending as domain is disabled! Use appSetting 'SendAsDomain: true' to enable it. Original message:<br/>"
+                    + email.Html ?? email.Text,
+                    email.Attachments,
+                    cancellationToken);
+                return;
+            }
+
+            // safety check, we don't want external senders to be able to spoof owner & send as the domain
+            var auth = IsAuthorizedSender(email, relayTargetEmail);
+            if (auth != RelayAuthResult.Authorized)
+            {
+                // possibly external user tried to send email. log and abort
+                _log.LogCritical($"Unauthorized sender {from} tried to send email in the name of the domain via subject: {email.Subject}. Auth result was {auth} (SPF: {email.Spf}, DKIM: {email.Dkim})");
+                // relay to target with warning
+                await SendEmailAsync(to, relayTargetEmail, $"[SPOOFWARNING] {email.Subject}",
+                    $"Someone tried to send an email in the name of the domain by using the '{_subjectParser.Prefix} {to}' subject. Their email was: {from}. <br />" +
+                    $"Auth result was {auth} (SPF: {email.Spf}, DKIM: {email.Dkim}). Original message below.<br /><br />" +
+                    $"{email.Html ?? email.Text}",
+                    email.Attachments,
+                    cancellationToken);
+                return;
+            }
+
+            // send in name of the domain
+            await SendEmailAsync(to, subject.RelayTarget, subject.Prefix + subject.Subject, email.Html ?? email.Text, email.Attachments, cancellationToken);
         }
 
         private RelayAuthResult IsAuthorizedSender(Email email, string relayTargetEmail)

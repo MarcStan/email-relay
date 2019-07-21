@@ -38,6 +38,7 @@ namespace EmailRelay.Tests
             },
             "me@privatemail.example.com",
             "domain.com",
+            true,
             CancellationToken.None);
 
             client.Verify(x => x.SendEmailAsync(It.Is<SendGridMessage>(m =>
@@ -74,7 +75,7 @@ namespace EmailRelay.Tests
                 },
                 Html = "Foo",
                 Subject = "Inquiry"
-            }, "me@privatemail.example.com", "domain.com", CancellationToken.None);
+            }, "me@privatemail.example.com", "domain.com", true, CancellationToken.None);
 
             client.Verify(x => x.SendEmailAsync(It.Is<SendGridMessage>(m =>
                 m.From.Email == "me@domain.com" &&
@@ -112,7 +113,7 @@ namespace EmailRelay.Tests
                 Subject = "Relay for ext@user.foo: Inquiry",
                 Spf = "pass",
                 Dkim = "{@privatemail.example.com : pass}"
-            }, "me@privatemail.example.com", "domain.com", CancellationToken.None);
+            }, "me@privatemail.example.com", "domain.com", true, CancellationToken.None);
 
             client.Verify(x => x.SendEmailAsync(It.Is<SendGridMessage>(m =>
                 m.From.Email == "me@domain.com" &&
@@ -120,6 +121,44 @@ namespace EmailRelay.Tests
                 m.Personalizations[0].Tos.Count == 1 &&
                 m.Personalizations[0].Tos[0].Email == "ext@user.foo" &&
                 m.Personalizations[0].Subject == "Inquiry"),
+                It.IsAny<CancellationToken>()));
+
+            client.VerifyNoOtherCalls();
+            logger.VerifyNoOtherCalls();
+        }
+
+        [Test]
+        public async Task SendingEmailFromTargetToDomainWithSpecialSubjectShouldSendWarningToOwnerIfSendAsDomainIsDisabled()
+        {
+            var client = new Mock<ISendGridClient>();
+            var logger = new Mock<ILogger>();
+            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
+
+            await relay.RelayAsync(new Email
+            {
+                From = new EmailAddress
+                {
+                    Email = "me@privatemail.example.com"
+                },
+                To = new[]
+                {
+                    new EmailAddress
+                    {
+                        Email = "me@domain.com"
+                    }
+                },
+                Html = "Foo",
+                Subject = "Relay for ext@user.foo: Inquiry",
+                Spf = "pass",
+                Dkim = "{@privatemail.example.com : pass}"
+            }, "me@privatemail.example.com", "domain.com", false, CancellationToken.None);
+
+            client.Verify(x => x.SendEmailAsync(It.Is<SendGridMessage>(m =>
+                m.From.Email == "me@domain.com" &&
+                m.Personalizations.Count == 1 &&
+                m.Personalizations[0].Tos.Count == 1 &&
+                m.Personalizations[0].Tos[0].Email == "me@privatemail.example.com" &&
+                m.Personalizations[0].Subject == "[WARNING] Relay for ext@user.foo: Inquiry"),
                 It.IsAny<CancellationToken>()));
 
             client.VerifyNoOtherCalls();
@@ -150,7 +189,7 @@ namespace EmailRelay.Tests
                 Subject = "this is the wrong prefix for ext@user.foo: Inquiry",
                 Spf = "pass",
                 Dkim = "{@privatemail.example.com : pass}"
-            }, "me@privatemail.example.com", "domain.com", CancellationToken.None);
+            }, "me@privatemail.example.com", "domain.com", true, CancellationToken.None);
 
             client.Verify(x => x.SendEmailAsync(It.Is<SendGridMessage>(m =>
                 m.From.Email == "me@domain.com" &&
@@ -187,7 +226,7 @@ namespace EmailRelay.Tests
                 Subject = "Relay for me@privatemail.example.com: Inquiry",
                 Spf = "pass",
                 Dkim = "{@privatemail.example.com : pass}"
-            }, "me@privatemail.example.com", "domain.com", CancellationToken.None);
+            }, "me@privatemail.example.com", "domain.com", true, CancellationToken.None);
 
             client.Verify(x => x.SendEmailAsync(It.Is<SendGridMessage>(m =>
                 m.From.Email == "me@domain.com" &&
@@ -237,6 +276,7 @@ namespace EmailRelay.Tests
             },
             "me@privatemail.example.com",
             "domain.com",
+            true,
             CancellationToken.None);
 
             client.Verify(x => x.SendEmailAsync(It.Is<SendGridMessage>(m =>
@@ -273,7 +313,7 @@ namespace EmailRelay.Tests
                 },
                 Html = "Foo",
                 Subject = "Relay for some@service.hack: Inquiry"
-            }, "me@privatemail.example.com", "domain.com", CancellationToken.None);
+            }, "me@privatemail.example.com", "domain.com", true, CancellationToken.None);
 
             // external user should not be allowed to send as domain just by sending well crafted subject!
             // warning email must be issued to owner
@@ -282,7 +322,7 @@ namespace EmailRelay.Tests
                 m.Personalizations.Count == 1 &&
                 m.Personalizations[0].Tos.Count == 1 &&
                 m.Personalizations[0].Tos[0].Email == "me@privatemail.example.com" &&
-                m.Personalizations[0].Subject == "[WARNING] Relay for ext@user.foo: Inquiry" &&
+                m.Personalizations[0].Subject == "[SPOOFWARNING] Relay for some@service.hack: Inquiry" &&
                 m.Contents[0].Value.Contains("Someone tried to send an email in the name of the domain")),
                 It.IsAny<CancellationToken>()));
             logger.Verify(x => x.Log(LogLevel.Critical, It.IsAny<EventId>(), It.IsAny<object>(), null, It.IsAny<Func<object, Exception, string>>()));
@@ -316,7 +356,7 @@ namespace EmailRelay.Tests
                 Subject = "Relay for some@service.hack: Inquiry",
                 Dkim = "none",
                 Spf = "softfail"
-            }, "me@privatemail.example.com", "domain.com", CancellationToken.None);
+            }, "me@privatemail.example.com", "domain.com", true, CancellationToken.None);
 
             // external user should not be allowed to send as domain just by sending well crafted subject!
             // warning email must be issued to owner
@@ -325,7 +365,7 @@ namespace EmailRelay.Tests
                 m.Personalizations.Count == 1 &&
                 m.Personalizations[0].Tos.Count == 1 &&
                 m.Personalizations[0].Tos[0].Email == "me@privatemail.example.com" &&
-                m.Personalizations[0].Subject == "[WARNING] Relay for (SPOOFED) me@privatemail.example.com: Inquiry" &&
+                m.Personalizations[0].Subject == "[SPOOFWARNING] Relay for some@service.hack: Inquiry" &&
                 m.Contents[0].Value.Contains("Someone tried to send an email in the name of the domain")),
                 It.IsAny<CancellationToken>()));
             logger.Verify(x => x.Log(LogLevel.Critical, It.IsAny<EventId>(), It.IsAny<object>(), null, It.IsAny<Func<object, Exception, string>>()));

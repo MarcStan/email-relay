@@ -7,6 +7,7 @@
     // set to email to receive emails from localhost testing
     "RelayTargetEmail": "",
     // the domain for which emails will be relayed, e.g. example.com
-    "Domain": ""
+    "Domain": "",
+    "SendAsDomain": true
   }
 }

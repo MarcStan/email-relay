@@ -68,7 +68,8 @@ namespace EmailRelay
                     var client = new SendGridClient(key);
                     var subjectParser = new SubjectParser(config["Prefix"]);
                     var relay = new RelayLogic(client, subjectParser, log);
-                    await relay.RelayAsync(email, target, domain, cancellationToken);
+                    var sendAsDomain = "true".Equals(config["SendAsDomain"], StringComparison.OrdinalIgnoreCase);
+                    await relay.RelayAsync(email, target, domain, sendAsDomain, cancellationToken);
                 }
 
                 return new OkResult();
