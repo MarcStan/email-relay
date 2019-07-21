@@ -49,13 +49,14 @@ namespace EmailRelay.Logic
             if (!string.IsNullOrEmpty(subject.RelayTarget))
             {
                 // safety check, we don't want external senders to be able to send as the domain
-                if (!from.Equals(relayTargetEmail, StringComparison.OrdinalIgnoreCase))
+                var auth = IsAuthorizedSender(email, relayTargetEmail);
+                if (auth != RelayAuthResult.Authorized)
                 {
                     // possibly external user tried to send email log and abort
-                    _log.LogCritical($"Unauthorized sender {email.From} tried to send email in the name of the domain via subject: {email.Subject}");
+                    _log.LogCritical($"Unauthorized sender {from} tried to send email in the name of the domain via subject: {email.Subject}. Auth result was {auth} (SPF: {email.Spf}, DKIM: {email.Dkim})");
                     // relay to target with warning
-                    await SendEmailAsync(to, relayTargetEmail, $"[WARNING] {subject.Prefix}Relay for {from}: {subject.Subject}",
-                        $"Someone tried to send an email in the name of the domain by using the 'Relay for {to}' subject. Their email was: {from}. Original message below.<br /><br />{email.Html ?? email.Text}", email.Attachments, cancellationToken);
+                    await SendEmailAsync(to, relayTargetEmail, $"[WARNING] {subject.Prefix}Relay for {(auth != RelayAuthResult.InvalidSender ? "(SPOOFED) " : "") + from}: {subject.Subject}",
+                        $"Someone tried to send an email in the name of the domain by using the 'Relay for {to}' subject. Their email was: {from}. <br />Auth result was {auth} (SPF: {email.Spf}, DKIM: {email.Dkim}). Original message below.<br /><br />{email.Html ?? email.Text}", email.Attachments, cancellationToken);
                     return;
                 }
                 // send in name of the domain
@@ -66,6 +67,24 @@ namespace EmailRelay.Logic
                 // regular email by external user -> relay to target
                 await SendEmailAsync(to, relayTargetEmail, $"{subject.Prefix}Relay for {from}: {subject.Subject}", email.Html ?? email.Text, email.Attachments, cancellationToken);
             }
+        }
+
+        private RelayAuthResult IsAuthorizedSender(Email email, string relayTargetEmail)
+        {
+            if (!email.From.Email.Equals(relayTargetEmail, StringComparison.OrdinalIgnoreCase))
+                return RelayAuthResult.InvalidSender;
+
+            // senders are easily faked, verify DKIM and SPF
+            // luckily Sendgrid does the verification already, so it's a simply string compare
+            if (!"pass".Equals(email.Spf, StringComparison.OrdinalIgnoreCase))
+                return RelayAuthResult.SpfFail;
+
+            var fromDomain = email.From.Email.Substring(email.From.Email.IndexOf('@'));
+            var expected = $"{{{fromDomain} : pass}}";
+            if (!expected.Equals(email.Dkim, StringComparison.OrdinalIgnoreCase))
+                return RelayAuthResult.DkimFail;
+
+            return RelayAuthResult.Authorized;
         }
 
         private async Task SendEmailAsync(string from, string to, string subject, string content, EmailAttachment[] attachments, CancellationToken cancellationToken)

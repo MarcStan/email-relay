@@ -6,7 +6,6 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using SendGrid;
 using System;
 using System.IO;
@@ -57,7 +56,7 @@ namespace EmailRelay
                         dict["cc"] = string.Join(";", email.Cc.Select(_ => _.Email));
                         dict["subject"] = email.Subject;
                         dict["content"] = email.Html ?? email.Text;
-                        dict["email"] = JsonConvert.SerializeObject(email);
+                        dict["email"] = email;
                     });
                     // save all attachments in subfolder
                     await Task.WhenAll(email.Attachments.Select(a => auditLogger.PersistAsync($"{id} (Attachments)/{a.FileName}", Convert.FromBase64String(a.Base64Data))));

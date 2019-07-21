@@ -12,7 +12,7 @@ namespace EmailRelay.Logic
         /// <param name="blobName"></param>
         /// <param name="dict"></param>
         /// <returns></returns>
-        Task PersistJsonAsync(string blobName, Action<Dictionary<string, string>> dict = null);
+        Task PersistJsonAsync(string blobName, Action<Dictionary<string, object>> dict = null);
 
         Task PersistAsync(string blobName, byte[] data);
     }

@@ -25,10 +25,10 @@ namespace EmailRelay.Logic
             await blob.UploadFromByteArrayAsync(data, 0, data.Length);
         }
 
-        public async Task PersistJsonAsync(string blobName, Action<Dictionary<string, string>> dict = null)
+        public async Task PersistJsonAsync(string blobName, Action<Dictionary<string, object>> dict = null)
         {
             var blob = await GetBlobAsync(blobName);
-            var data = new Dictionary<string, string>();
+            var data = new Dictionary<string, object>();
             dict?.Invoke(data);
             await blob.UploadTextAsync(JsonConvert.SerializeObject(new
             {
