@@ -1,8 +1,5 @@
 ﻿using Microsoft.Azure.WebJobs;
 using Microsoft.WindowsAzure.Storage.Blob;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace EmailRelay.Logic
@@ -25,15 +22,10 @@ namespace EmailRelay.Logic
             await blob.UploadFromByteArrayAsync(data, 0, data.Length);
         }
 
-        public async Task PersistJsonAsync(string blobName, Action<Dictionary<string, object>> dict = null)
+        public async Task PersistAsync(string blobName, string text)
         {
             var blob = await GetBlobAsync(blobName);
-            var data = new Dictionary<string, object>();
-            dict?.Invoke(data);
-            await blob.UploadTextAsync(JsonConvert.SerializeObject(new
-            {
-                data
-            }, Formatting.Indented));
+            await blob.UploadTextAsync(text);
         }
 
         private async Task<CloudBlockBlob> GetBlobAsync(string blobName)

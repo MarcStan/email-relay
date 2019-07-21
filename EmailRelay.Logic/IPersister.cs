@@ -1,18 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace EmailRelay.Logic
 {
     public interface IPersister
     {
-        /// <summary>
-        /// Persist data as a json object with the dictionary as property data.
-        /// </summary>
-        /// <param name="blobName"></param>
-        /// <param name="dict"></param>
-        /// <returns></returns>
-        Task PersistJsonAsync(string blobName, Action<Dictionary<string, object>> dict = null);
+        Task PersistAsync(string blobName, string text);
 
         Task PersistAsync(string blobName, byte[] data);
     }

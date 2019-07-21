@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using SendGrid;
 using System;
 using System.IO;
@@ -49,15 +50,7 @@ namespace EmailRelay
                     var d = DateTimeOffset.UtcNow;
                     // one folder per day is fine for now 
                     var id = $"{d.ToString("yyyy-MM")}/{d.ToString("dd")}/{d.ToString("HH-mm-ss")}_{email.From.Email} - {email.Subject}";
-                    await auditLogger.PersistJsonAsync($"{id}.json", dict =>
-                    {
-                        dict["from"] = email.From.Email;
-                        dict["to"] = string.Join(";", email.To.Select(_ => _.Email));
-                        dict["cc"] = string.Join(";", email.Cc.Select(_ => _.Email));
-                        dict["subject"] = email.Subject;
-                        dict["content"] = email.Html ?? email.Text;
-                        dict["email"] = email;
-                    });
+                    await auditLogger.PersistAsync($"{id}.json", JsonConvert.SerializeObject(email));
                     // save all attachments in subfolder
                     await Task.WhenAll(email.Attachments.Select(a => auditLogger.PersistAsync($"{id} (Attachments)/{a.FileName}", Convert.FromBase64String(a.Base64Data))));
                 }
