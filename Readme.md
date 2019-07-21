@@ -45,9 +45,10 @@ You can follow [their documentation](https://sendgrid.com/docs/ui/account-and-se
 Before you deploy the azure function, be sure to set the ResourceGroupName variables (2x) and to customize the `appSettings` of the azure function deployment task in the [azure-pipelines.yml](./azure-pipelines.yml) file:
 
 * `SendgridApiKey` - key with at least `Mail Send` permissions in your Sendgrid account
-* `RelayTargetEmail` - if set all emails sent to the domain will be forwarded to this email
-* `Domain` - name of your domain, example.com and `@example.com` both work, if you have setup emails for a subdomain, then set the specific subdomain mail.example.com
-* `Subject` - customize the prefix needed to send emails. Defaults to "Relay for"
+* `RelayTargetEmail` - All emails sent to the domain will be forwarded to this email
+* `Domain` - (formats example.com and `@example.com` both work). If you have setup emails for a subdomain, then set the specific subdomain mail.example.com. Only emails matching this domain are processed
+* `SendAsDomain` - set to `true` if you want to support sending mail as the domain (see [Sending mail](#Sending%20mail)). Defaults to false, which means only [Receiving mail](#Receiving%20mail) is possible
+* `Prefix` - customize the prefix needed to send emails. Defaults to "Relay for" (see also [Sending mail](#Sending%20mail))
 
 Optionally also enable this:
 
@@ -100,11 +101,20 @@ The prefix is parsed lax (e.g. the Re: Re: Re: spam is recognized) and kept.
 
 To send emails in the name of the domain you must send a specially crafted email to the domain.
 
+**Note:** appSetting `SendAsDomain` must also be set to true for this feature to work.
+
 Context:
 
 * Your domain is example.com and you want to send an email as contact@example.com
 * You have setup this function to relay emails to myprivatemail@me.com
+* `SendAsDomain` is set to true and `Prefix` is not set to a custom value (defaults to "Relay for")
 * The intended recipient is user@foobar.com and the subject should be `Inquiry`
+
+The subject pattern is:
+
+> [RE: Fwd:...]%Prefix% %desiredRecipient%: %actualSubject%
+
+The "Re: Fwd:" spam is automatically detected and forwarded to recipients as well.
 
 From myprivateemail@me.com send an email to contact@example.com with subject `Relay for user@foobar.com: Inquiry` and any content/attachments.
 
@@ -115,3 +125,23 @@ user@foobar.com will receive an email `Inquiry` from email contact@example.com w
 Note that this works because myprivateemail@me.com is configured as the owner and is the only one allowed to send emails in the name of the domain.
 
 If you (or someone else) attempts to send an email in the above format to the domain (from another address) a warning will be sent to the registered owner (myprivateemail@me.com) and **no** email is sent to the requested recipient.
+
+## Responding to emails
+
+Similar to Sending mail.
+
+Context:
+
+* Your domain is example.com and someone sent an email to contact@example.com with subject `Inquiry`
+* You have setup this function to relay emails to myprivatemail@me.com and received said email with subject `Relay for user@foobar.com: Inquiry`
+* `SendAsDomain` must be set to true to allow responding in the name of the domain
+
+You simply respond to the email (response will be sent to contact@example.com).
+
+Note that some email programs will change the subject to `Re: Relay for user@foobar.com: Inquiry` (or any other known response prefix); this will be parsed correctly regardless.
+
+Outcome:
+
+Because you are sending as the configured owner (`RelayTargetEmail`), `SendAsDomain` is true and the subject is in the correct format, an email is sent from contact@example.com to user@foobar.com with either subject `Re: Inquiry` or `Inquiry` (depending on whether your email program added the `Re:` or not).
+
+If the user respons to the email again, the `Re:` will be split yet again and you will receive a response email from contact@example.com with subject `Re: Relay for user@foobar.com: Inquiry`.
