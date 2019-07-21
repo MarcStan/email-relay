@@ -13,12 +13,15 @@ namespace EmailRelay.Logic
     {
         private readonly ISendGridClient _client;
         private readonly ILogger _log;
+        private readonly SubjectParser _subjectParser;
 
         public RelayLogic(
             ISendGridClient client,
+            SubjectParser subjectParser,
             ILogger log)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
+            _subjectParser = subjectParser ?? throw new ArgumentNullException(nameof(subjectParser));
             _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
@@ -44,8 +47,9 @@ namespace EmailRelay.Logic
             // important to match by domain as user could CC any number of others and put domain not-first
             var to = recipients.FirstOrDefault(_ => _.EndsWith(domain, StringComparison.OrdinalIgnoreCase)) ?? throw new NotSupportedException($"Unable to process email without at least one {domain} entry");
 
-            var subject = new SubjectParser().Parse(email.Subject);
+            var subject = _subjectParser.Parse(email.Subject);
             // check if subject contains "Relay for email"
+
             if (!string.IsNullOrEmpty(subject.RelayTarget))
             {
                 // safety check, we don't want external senders to be able to send as the domain
@@ -55,8 +59,8 @@ namespace EmailRelay.Logic
                     // possibly external user tried to send email log and abort
                     _log.LogCritical($"Unauthorized sender {from} tried to send email in the name of the domain via subject: {email.Subject}. Auth result was {auth} (SPF: {email.Spf}, DKIM: {email.Dkim})");
                     // relay to target with warning
-                    await SendEmailAsync(to, relayTargetEmail, $"[WARNING] {subject.Prefix}Relay for {(auth != RelayAuthResult.InvalidSender ? "(SPOOFED) " : "") + from}: {subject.Subject}",
-                        $"Someone tried to send an email in the name of the domain by using the 'Relay for {to}' subject. Their email was: {from}. <br />Auth result was {auth} (SPF: {email.Spf}, DKIM: {email.Dkim}). Original message below.<br /><br />{email.Html ?? email.Text}", email.Attachments, cancellationToken);
+                    await SendEmailAsync(to, relayTargetEmail, $"[WARNING] {subject.Prefix}{_subjectParser.Prefix} {(auth != RelayAuthResult.InvalidSender ? "(SPOOFED) " : "") + from}: {subject.Subject}",
+                        $"Someone tried to send an email in the name of the domain by using the '{_subjectParser.Prefix} {to}' subject. Their email was: {from}. <br />Auth result was {auth} (SPF: {email.Spf}, DKIM: {email.Dkim}). Original message below.<br /><br />{email.Html ?? email.Text}", email.Attachments, cancellationToken);
                     return;
                 }
                 // send in name of the domain
@@ -65,7 +69,7 @@ namespace EmailRelay.Logic
             else
             {
                 // regular email by external user -> relay to target
-                await SendEmailAsync(to, relayTargetEmail, $"{subject.Prefix}Relay for {from}: {subject.Subject}", email.Html ?? email.Text, email.Attachments, cancellationToken);
+                await SendEmailAsync(to, relayTargetEmail, $"{subject.Prefix}{_subjectParser.Prefix} {from}: {subject.Subject}", email.Html ?? email.Text, email.Attachments, cancellationToken);
             }
         }
 

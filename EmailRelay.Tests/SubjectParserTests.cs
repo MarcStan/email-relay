@@ -28,6 +28,17 @@ namespace EmailRelay.Tests
             r.Subject.Should().Be(subject);
         }
 
+        [TestCase("Inquiry")]
+        [TestCase("Relay request")]
+        [TestCase("Relay for foo@example.com")]
+        public void ParseCustomPrefix(string subject)
+        {
+            var r = new SubjectParser("Email for").Parse($"Email for me@example.com: {subject}");
+            r.Prefix.Should().BeNullOrEmpty();
+            r.RelayTarget.Should().Be("me@example.com");
+            r.Subject.Should().Be(subject);
+        }
+
         [TestCase("Fwd:", "Inquiry")]
         [TestCase("Re:", "Inquiry")]
         [TestCase("Fw:", "Inquiry")]

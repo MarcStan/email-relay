@@ -66,7 +66,8 @@ namespace EmailRelay
                         throw new NotSupportedException("SendgridApiKey must be set as well when relay is used.");
 
                     var client = new SendGridClient(key);
-                    var relay = new RelayLogic(client, log);
+                    var subjectParser = new SubjectParser(config["Prefix"]);
+                    var relay = new RelayLogic(client, subjectParser, log);
                     await relay.RelayAsync(email, target, domain, cancellationToken);
                 }
 

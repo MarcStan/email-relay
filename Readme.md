@@ -47,6 +47,7 @@ Before you deploy the azure function, be sure to set the ResourceGroupName varia
 * `SendgridApiKey` - key with at least `Mail Send` permissions in your Sendgrid account
 * `RelayTargetEmail` - if set all emails sent to the domain will be forwarded to this email
 * `Domain` - name of your domain, example.com and `@example.com` both work, if you have setup emails for a subdomain, then set the specific subdomain mail.example.com
+* `Subject` - customize the prefix needed to send emails. Defaults to "Relay for"
 
 Optionally also enable this:
 

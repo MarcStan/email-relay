@@ -18,7 +18,7 @@ namespace EmailRelay.Tests
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, logger.Object);
+            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
 
             await relay.RelayAsync(new Email
             {
@@ -57,7 +57,7 @@ namespace EmailRelay.Tests
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, logger.Object);
+            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
 
             await relay.RelayAsync(new Email
             {
@@ -93,7 +93,7 @@ namespace EmailRelay.Tests
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, logger.Object);
+            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
 
             await relay.RelayAsync(new Email
             {
@@ -127,11 +127,48 @@ namespace EmailRelay.Tests
         }
 
         [Test]
+        public async Task SendingEmailFromTargetToDomainWithWrongSubjectShouldSendRegularEmailToOwner()
+        {
+            var client = new Mock<ISendGridClient>();
+            var logger = new Mock<ILogger>();
+            var relay = new RelayLogic(client.Object, new SubjectParser("this is the correct prefix for"), logger.Object);
+
+            await relay.RelayAsync(new Email
+            {
+                From = new EmailAddress
+                {
+                    Email = "me@privatemail.example.com"
+                },
+                To = new[]
+                {
+                    new EmailAddress
+                    {
+                        Email = "me@domain.com"
+                    }
+                },
+                Html = "Foo",
+                Subject = "this is the wrong prefix for ext@user.foo: Inquiry",
+                Spf = "pass",
+                Dkim = "{@privatemail.example.com : pass}"
+            }, "me@privatemail.example.com", "domain.com", CancellationToken.None);
+
+            client.Verify(x => x.SendEmailAsync(It.Is<SendGridMessage>(m =>
+                m.From.Email == "me@domain.com" &&
+                m.Personalizations.Count == 1 &&
+                m.Personalizations[0].Tos.Count == 1 &&
+                m.Personalizations[0].Tos[0].Email == "me@privatemail.example.com" &&
+                m.Personalizations[0].Subject == "this is the correct prefix for me@privatemail.example.com: this is the wrong prefix for ext@user.foo: Inquiry"),
+                It.IsAny<CancellationToken>()));
+
+            client.VerifyNoOtherCalls();
+            logger.VerifyNoOtherCalls();
+        }
+        [Test]
         public async Task SendingEmailFromTargetToDomainWithSpecialSubjectShouldSendAsDomainToSelf()
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, logger.Object);
+            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
 
             await relay.RelayAsync(new Email
             {
@@ -169,7 +206,7 @@ namespace EmailRelay.Tests
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, logger.Object);
+            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
 
             await relay.RelayAsync(new Email
             {
@@ -219,7 +256,7 @@ namespace EmailRelay.Tests
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, logger.Object);
+            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
 
             await relay.RelayAsync(new Email
             {
@@ -259,7 +296,7 @@ namespace EmailRelay.Tests
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, logger.Object);
+            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
 
             await relay.RelayAsync(new Email
             {
