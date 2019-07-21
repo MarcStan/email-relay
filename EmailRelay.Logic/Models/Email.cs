@@ -9,6 +9,8 @@ namespace EmailRelay.Logic.Models
     /// </summary>
     public class Email
     {
+        public KeyValuePair<string, string>[] Headers { get; set; }
+
         public EmailAddress From { get; set; }
 
         public EmailAddress[] To { get; set; } = new EmailAddress[0];

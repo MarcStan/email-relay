@@ -2,6 +2,7 @@
 using EmailRelay.Logic.Models;
 using HttpMultipartParser;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -24,6 +25,19 @@ namespace EmailRelay.Logic
             var charsets = JObject.Parse(parser.GetParameterValue("charsets", "{}"))
                 .Properties()
                 .ToDictionary(p => p.Name, p => Encoding.GetEncoding(p.Value.ToString()));
+
+            var rawHeaders = parser
+                .GetParameterValue("headers", "")
+                .Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+
+            var headers = rawHeaders
+                .Select(header =>
+                {
+                    var splitHeader = header.Split(new[] { ": " }, StringSplitOptions.RemoveEmptyEntries);
+                    var key = splitHeader[0];
+                    var value = splitHeader.Length > 1 ? splitHeader[1] : null;
+                    return new KeyValuePair<string, string>(key, value);
+                }).ToArray();
 
             // Create a dictionary of parsers, one parser for each desired encoding.
             // This is necessary because MultipartFormDataParser can only handle one
@@ -85,6 +99,7 @@ namespace EmailRelay.Logic
             {
                 // serializer friendly format
                 Charsets = charsets.ToDictionary(p => p.Key, p => p.Value.WebName),
+                Headers = headers,
                 From = from,
                 To = to,
                 Cc = cc,
