@@ -29,6 +29,10 @@ namespace EmailRelay.Logic.Models
 
         public string SpamScore { get; set; }
 
+        public string Dkim { get; set; }
+
+        public string Spf { get; set; }
+
         public EmailAttachment[] Attachments { get; set; } = new EmailAttachment[0];
 
         /// <summary>

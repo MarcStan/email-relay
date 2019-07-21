@@ -109,7 +109,9 @@ namespace EmailRelay.Logic
                 Attachments = attachments,
                 SenderIp = GetEncodedValue("sender_ip", charsets, encodedParsers, null),
                 SpamReport = GetEncodedValue("spam_report", charsets, encodedParsers, null),
-                SpamScore = GetEncodedValue("spam_score", charsets, encodedParsers, null)
+                SpamScore = GetEncodedValue("spam_score", charsets, encodedParsers, null),
+                Dkim = GetEncodedValue("dkim", charsets, encodedParsers, null),
+                Spf = GetEncodedValue("SPF", charsets, encodedParsers, null)
             };
         }
 
