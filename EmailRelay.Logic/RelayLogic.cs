@@ -4,6 +4,7 @@ using SendGrid;
 using SendGrid.Helpers.Mail;
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -91,8 +92,94 @@ namespace EmailRelay.Logic
                 return;
             }
 
+            // sanitize email content
+            var content = email.Html ?? email.Text;
+            if (!Sanitize(ref content, subject, relayTargetEmail, to))
+            {
+                // possibly external user tried to send email. log and abort
+                _log.LogCritical($"Unable to sanitize content from email. Could not find block with private information. Assuming the format changed and did not send the email");
+                // respond to owner
+                await SendEmailAsync(to, relayTargetEmail, $"[SANITIZE] {email.Subject}",
+                    "Failed to sanitize the email content (and did not send it to the target). <br />" +
+                    "Could not find the section with private information. Assuming the format changed. Original content below.<br /><br />" +
+                    content,
+                    email.Attachments,
+                    cancellationToken);
+                return;
+            }
+
             // send in name of the domain
-            await SendEmailAsync(to, subject.RelayTarget, subject.Prefix + subject.Subject, email.Html ?? email.Text, email.Attachments, cancellationToken);
+            await SendEmailAsync(to, subject.RelayTarget, subject.Prefix + subject.Subject, content, email.Attachments, cancellationToken);
+        }
+
+        private bool Sanitize(ref string content, SubjectModel subject, string relayTargetEmail, string to)
+        {
+            // when replying from private account the email and relay prefix will be in the body
+            // since many email clients copy the body into the reply in plain text
+            // the receiver will see the relay target email
+
+            // e.g.
+            // 1. sender@example.com sends email to marc@marcstan.net
+            // 2. email is redirected as "from marc@marcstan.net" to marcstan@live.com
+            // 3. reply is sent from marcstan@live.com to marc@marcstan.net
+            // 4. (after sanity check) server sends out the email from marc@marcstan.net to sender@example.com
+            // sent email would the contain the body below:
+
+            /*
+This is my response
+
+___________________________________________
+From: marc@marcstan.net <marc@marcstan.net>
+Sent: Tuesday, September 3, 2019 11:19:42 PM
+To: marcstan@live.com <marcstan@live.com>
+Subject: Email Relay: sender@example.com: Test
+ 
+This is the original message from someone
+
+            */
+
+            // note that
+            // A) it contains marcstan@live.com (which sender@example.com would not expect)
+            // B) it contains "Email Relay: " prefix in subject line inside the email which sender would not expect (actual subject will not contain it)
+
+            // solution:
+            // find the From: Sent: To: Subject: block and string replace
+
+            var regex = new Regex($"From:.*?(?<from>{to} <{to}>|m{to})\r?\nSent: .*\r?\nTo: (?<to>{relayTargetEmail} <{relayTargetEmail}>|{relayTargetEmail})\r?\nSubject: {subject.Prefix}(?<subject>{_subjectParser.Prefix}\\s?{subject.RelayTarget}:\\s)", RegexOptions.Multiline);
+            var match = regex.Match(content);
+            if (!match.Success)
+            {
+                // two options
+                // 1. first email and contains no metadata
+                // 2. format changed
+
+                // mail contains metadata, abort
+                if (content.Contains("From:") &&
+                    content.Contains("Sent:") &&
+                    content.Contains("To:") &&
+                    content.Contains("Subject:"))
+                    return false;
+                // no metadata, assume initial email
+            }
+            // replace all private information with the expected
+            var fromGroup = match.Groups["from"];
+            var toGroup = match.Groups["to"];
+            var subjectGroup = match.Groups["subject"];
+
+            var orderedByIndex = new[]
+            {
+                new { group = fromGroup, replacement = $"{subject.RelayTarget} <{subject.RelayTarget}>" },
+                new { group = toGroup, replacement = $"{to} <{to}>" },
+                new { group = subjectGroup, replacement = "" }
+            }.OrderByDescending(x => x.group.Index);
+            // reverse order by index to keep correct offset for earlier groups
+            foreach (var item in orderedByIndex)
+            {
+                content =
+                    content.Substring(0, item.group.Index) + item.replacement +
+                    content.Substring(item.group.Index + item.group.Length);
+            }
+            return true;
         }
 
         private RelayAuthResult IsAuthorizedSender(Email email, string relayTargetEmail)
