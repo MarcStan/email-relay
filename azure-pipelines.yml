@@ -107,6 +107,6 @@ stages:
         appType: functionApp
         appName: '$(ResourceGroupName)'
         # settings injected via keyvault and/or Azure DevOps secret variables
-        appSettings: "-ArchiveContainerName emails -RelayTargetEmail $(RelayTargetEmail) -SendgridApiKey $(SendgridApiKey) -Domain $(Domain) -Prefix $(Prefix)"
+        appSettings: "-ArchiveContainerName emails -RelayTargetEmail $(RelayTargetEmail) -SendgridApiKey $(SendgridApiKey) -Domain $(Domain) -Prefix $(Prefix) -SendAsDomain $(SendAsDomain)"
         package: '$(System.ArtifactsDirectory)/EmailRelay'
         deploymentMethod: runFromPackage
