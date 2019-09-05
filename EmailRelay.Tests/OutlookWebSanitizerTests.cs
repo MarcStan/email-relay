@@ -94,6 +94,23 @@ This is the original message from someone";
         }
 
         [Test]
+        public void SanitizeHtmlShouldWorkWithSubjectPrefix()
+        {
+            var parser = new SubjectParser();
+            var sanitizer = new OutlookWebSanitizer(parser);
+
+            // when first responding to email the new subject will have "RE: .."
+            // while the old subject(copied into the body) doesn't have it -> should parse just fine
+            var content = File.ReadAllText("Data/outlook-html-email.txt");
+            sanitizer.TrySanitizeHtml(ref content, new SubjectModel
+            {
+                Prefix = "RE: ",
+                RelayTarget = "ext@user.foo",
+                Subject = "Test"
+            }, "me@live.com", "me@mydomain.com").Should().BeTrue();
+        }
+
+        [Test]
         public void SanitizeHtmlShouldFailIfNotMatched()
         {
             var parser = new SubjectParser();

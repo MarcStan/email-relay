@@ -13,7 +13,7 @@ namespace EmailRelay.Logic.Sanitizers
         /// <summary>
         /// Allows both escaped and unescaped newline as well as linux or windows
         /// </summary>
-        private const string _newLineRegex = "(\r\n|\r|\\r\\n|\\r)";
+        private const string _newLineRegex = "(\r\n|\n|\\r\\n|\\n)";
 
         private static string[] _supportedDomains => new[]
         {
@@ -74,7 +74,7 @@ namespace EmailRelay.Logic.Sanitizers
                 $"From:.*?(?<from>{to} <{to}>|{to}){_newLineRegex}" +
                 $"Sent: .*{_newLineRegex}" +
                 $"To: (?<to>{relayTargetEmail} <{relayTargetEmail}>|{relayTargetEmail}){_newLineRegex}" +
-                $"Subject: {subject.Prefix}(?<subject>{_subjectParser.Prefix}\\s?{subject.RelayTarget}:\\s)", RegexOptions.Multiline);
+                $"Subject: ({subject.Prefix})?(?<subject>{_subjectParser.Prefix}\\s?{subject.RelayTarget}:\\s)", RegexOptions.Multiline);
             var match = regex.Match(content);
             if (!match.Success)
             {
@@ -128,7 +128,7 @@ namespace EmailRelay.Logic.Sanitizers
                 $"From:.*?(?<from>{to} &lt;{to}&gt;|{to}).*?{_newLineRegex}?" +
                 $".*?Sent:.*{_newLineRegex}?" +
                 $".*?To:.*?(?<to>{relayTargetEmail} &lt;{relayTargetEmail}&gt;|{relayTargetEmail}).*{_newLineRegex}?" +
-                $".*?Subject:.*?{subject.Prefix}(?<subject>{_subjectParser.Prefix}\\s?{subject.RelayTarget}).*?:\\s+.*"
+                $".*?Subject:.*?({subject.Prefix})?(?<subject>{_subjectParser.Prefix}\\s?{subject.RelayTarget}.*?:\\s+)"
                 , RegexOptions.Multiline);
             var match = regex.Match(content);
             if (!match.Success)
