@@ -1,5 +1,6 @@
 ﻿using EmailRelay.Logic;
 using EmailRelay.Logic.Models;
+using EmailRelay.Logic.Sanitizers;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
@@ -13,12 +14,16 @@ namespace EmailRelay.Tests
 {
     public class RelayLogicTests
     {
+        private IMetadataSanitizer[] GetDefaultSanitizers()
+            => new[] { new FakeSanitizer() };
+
         [Test]
         public async Task MailFromExternalUserShouldBeRelayedToTarget()
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
+            var parser = new SubjectParser();
+            var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
 
             await relay.RelayAsync(new Email
             {
@@ -58,7 +63,8 @@ namespace EmailRelay.Tests
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
+            var parser = new SubjectParser();
+            var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
 
             await relay.RelayAsync(new Email
             {
@@ -94,7 +100,8 @@ namespace EmailRelay.Tests
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
+            var parser = new SubjectParser();
+            var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
 
             await relay.RelayAsync(new Email
             {
@@ -109,7 +116,7 @@ namespace EmailRelay.Tests
                         Email = "me@domain.com"
                     }
                 },
-                Html = "Foo",
+                Text = "Foo",
                 Subject = "Relay for ext@user.foo: Inquiry",
                 Spf = "pass",
                 Dkim = "{@privatemail.example.com : pass}"
@@ -132,13 +139,14 @@ namespace EmailRelay.Tests
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, new SubjectParser("Email Relay:"), logger.Object);
+            var parser = new SubjectParser("Email Relay:");
+            var relay = new RelayLogic(client.Object, parser, logger.Object, new[] { new OutlookWebSanitizer(parser) });
 
             await relay.RelayAsync(new Email
             {
                 From = new EmailAddress
                 {
-                    Email = "me@privatemail.example.com"
+                    Email = "me@live.com"
                 },
                 To = new[]
                 {
@@ -147,19 +155,19 @@ namespace EmailRelay.Tests
                         Email = "me@domain.com"
                     }
                 },
-                Html = @"This is my response
+                Text = @"This is my response
 
 ___________________________________________
 From: me@domain.com <me@domain.com>
 Sent: Tuesday, September 3, 2019 11:19:42 PM
-To: me@privatemail.example.com <me@privatemail.example.com>
+To: me@live.com <me@live.com>
 Subject: Email Relay: ext@user.foo: Test
  
 This is the original message from someone",
                 Subject = "Email Relay: ext@user.foo: Test",
                 Spf = "pass",
-                Dkim = "{@privatemail.example.com : pass}"
-            }, "me@privatemail.example.com", "domain.com", true, CancellationToken.None);
+                Dkim = "{@live.com : pass}"
+            }, "me@live.com", "domain.com", true, CancellationToken.None);
 
             client.Verify(x => x.SendEmailAsync(It.Is<SendGridMessage>(m =>
                 m.From.Email == "me@domain.com" &&
@@ -168,7 +176,7 @@ This is the original message from someone",
                 m.Personalizations[0].Tos[0].Email == "ext@user.foo" &&
                 m.Personalizations[0].Subject == "Test" &&
                 !m.Contents[0].Value.Contains("From: me@domain.com <me@domain.com>") &&
-                !m.Contents[0].Value.Contains("To: me@privatemail.example.com <me@privatemail.example.com>") &&
+                !m.Contents[0].Value.Contains("To: me@live.com <me@live.com>") &&
                 !m.Contents[0].Value.Contains("Subject: Email Relay: ext@user.foo: Test") &&
                 m.Contents[0].Value.Contains("From: ext@user.foo <ext@user.foo>") &&
                 m.Contents[0].Value.Contains("To: me@domain.com <me@domain.com>") &&
@@ -184,13 +192,14 @@ This is the original message from someone",
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
+            var parser = new SubjectParser();
+            var relay = new RelayLogic(client.Object, parser, logger.Object, new[] { new OutlookWebSanitizer(parser) });
 
             await relay.RelayAsync(new Email
             {
                 From = new EmailAddress
                 {
-                    Email = "me@privatemail.example.com"
+                    Email = "me@live.com"
                 },
                 To = new[]
                 {
@@ -199,19 +208,19 @@ This is the original message from someone",
                         Email = "me@domain.com"
                     }
                 },
-                Html = @"This is my response
+                Text = @"This is my response
 
 ___________________________________________
 From: me@domain.com <me@domain.com>
 Sent: Tuesday, September 3, 2019 11:19:42 PM
-To: me@privatemail.example.com <me@privatemail.example.com>
+To: me@live.com <me@live.com>
 Subject: Relay for ext@user.foo: Test
  
 This is the original message from someone",
                 Subject = "Relay for ext@user.foo: Test",
                 Spf = "pass",
-                Dkim = "{@privatemail.example.com : pass}"
-            }, "me@privatemail.example.com", "domain.com", true, CancellationToken.None);
+                Dkim = "{@live.com : pass}"
+            }, "me@live.com", "domain.com", true, CancellationToken.None);
 
             client.Verify(x => x.SendEmailAsync(It.Is<SendGridMessage>(m =>
                 m.From.Email == "me@domain.com" &&
@@ -220,7 +229,7 @@ This is the original message from someone",
                 m.Personalizations[0].Tos[0].Email == "ext@user.foo" &&
                 m.Personalizations[0].Subject == "Test" &&
                 !m.Contents[0].Value.Contains("From: me@domain.com <me@domain.com>") &&
-                !m.Contents[0].Value.Contains("To: me@privatemail.example.com <me@privatemail.example.com>") &&
+                !m.Contents[0].Value.Contains("To: me@live.com <me@live.com>") &&
                 !m.Contents[0].Value.Contains("Subject: Relay for ext@user.foo: Test") &&
                 m.Contents[0].Value.Contains("From: ext@user.foo <ext@user.foo>") &&
                 m.Contents[0].Value.Contains("To: me@domain.com <me@domain.com>") &&
@@ -236,13 +245,14 @@ This is the original message from someone",
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
+            var parser = new SubjectParser();
+            var relay = new RelayLogic(client.Object, parser, logger.Object, new[] { new OutlookWebSanitizer(parser) });
 
             await relay.RelayAsync(new Email
             {
                 From = new EmailAddress
                 {
-                    Email = "me@privatemail.example.com"
+                    Email = "me@live.com"
                 },
                 To = new[]
                 {
@@ -251,19 +261,19 @@ This is the original message from someone",
                         Email = "me@domain.com"
                     }
                 },
-                Html = @"This is my response
+                Text = @"This is my response
 
 ___________________________________________
 From: me@domain.com <me@domain.com>
 Sent: Tuesday, September 3, 2019 11:19:42 PM
-To: me@privatemail.example.com <me@privatemail.example.com>
+To: me@live.com <me@live.com>
 Subject: RE: Relay for ext@user.foo: Test
  
 This is the original message from someone",
                 Subject = "RE: Relay for ext@user.foo: Test",
                 Spf = "pass",
-                Dkim = "{@privatemail.example.com : pass}"
-            }, "me@privatemail.example.com", "domain.com", true, CancellationToken.None);
+                Dkim = "{@live.com : pass}"
+            }, "me@live.com", "domain.com", true, CancellationToken.None);
 
             client.Verify(x => x.SendEmailAsync(It.Is<SendGridMessage>(m =>
                 m.From.Email == "me@domain.com" &&
@@ -272,7 +282,7 @@ This is the original message from someone",
                 m.Personalizations[0].Tos[0].Email == "ext@user.foo" &&
                 m.Personalizations[0].Subject == "RE: Test" &&
                 !m.Contents[0].Value.Contains("From: me@domain.com <me@domain.com>") &&
-                !m.Contents[0].Value.Contains("To: me@privatemail.example.com <me@privatemail.example.com>") &&
+                !m.Contents[0].Value.Contains("To: me@live.com <me@live.com>") &&
                 !m.Contents[0].Value.Contains("Subject: RE: Relay for ext@user.foo: Test") &&
                 m.Contents[0].Value.Contains("From: ext@user.foo <ext@user.foo>") &&
                 m.Contents[0].Value.Contains("To: me@domain.com <me@domain.com>") &&
@@ -288,7 +298,8 @@ This is the original message from someone",
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
+            var parser = new SubjectParser();
+            var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
 
             await relay.RelayAsync(new Email
             {
@@ -326,7 +337,8 @@ This is the original message from someone",
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, new SubjectParser("this is the correct prefix for"), logger.Object);
+            var parser = new SubjectParser("this is the correct prefix for");
+            var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
 
             await relay.RelayAsync(new Email
             {
@@ -363,7 +375,8 @@ This is the original message from someone",
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
+            var parser = new SubjectParser();
+            var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
 
             await relay.RelayAsync(new Email
             {
@@ -401,7 +414,8 @@ This is the original message from someone",
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
+            var parser = new SubjectParser();
+            var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
 
             await relay.RelayAsync(new Email
             {
@@ -452,7 +466,8 @@ This is the original message from someone",
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
+            var parser = new SubjectParser();
+            var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
 
             await relay.RelayAsync(new Email
             {
@@ -492,7 +507,8 @@ This is the original message from someone",
         {
             var client = new Mock<ISendGridClient>();
             var logger = new Mock<ILogger>();
-            var relay = new RelayLogic(client.Object, new SubjectParser(), logger.Object);
+            var parser = new SubjectParser();
+            var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
 
             await relay.RelayAsync(new Email
             {

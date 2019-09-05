@@ -1,5 +1,6 @@
 using EmailRelay.Logic;
 using EmailRelay.Logic.Models;
+using EmailRelay.Logic.Sanitizers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
@@ -67,7 +68,10 @@ namespace EmailRelay
 
                     var client = new SendGridClient(key);
                     var subjectParser = new SubjectParser(config["Prefix"]);
-                    var relay = new RelayLogic(client, subjectParser, log);
+                    var relay = new RelayLogic(client, subjectParser, log, new[]
+                    {
+                        new OutlookWebSanitizer(subjectParser) }
+                    );
                     var sendAsDomain = "true".Equals(config["SendAsDomain"], StringComparison.OrdinalIgnoreCase);
                     await relay.RelayAsync(email, target, domain, sendAsDomain, cancellationToken);
                 }
