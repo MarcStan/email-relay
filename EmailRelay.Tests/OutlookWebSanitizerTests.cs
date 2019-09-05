@@ -57,13 +57,19 @@ This is the original message from someone";
             }, "me@live.com", "me@domain.com").Should().BeFalse();
         }
 
-        [Test]
-        public void SanitizeHtmlShouldWork()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void SanitizeHtmlShouldWork(bool escapeNewlines)
         {
             var parser = new SubjectParser();
             var sanitizer = new OutlookWebSanitizer(parser);
 
             var content = File.ReadAllText("Data/outlook-html-email.txt");
+            if (escapeNewlines)
+            {
+                // sendgrid escapes newlines so both should work
+                content = content.Replace("\r\n", "\\r\\n");
+            }
             sanitizer.TrySanitizeHtml(ref content, new SubjectModel
             {
                 Prefix = "",
@@ -103,5 +109,28 @@ This is the original message from someone";
             content.Should().Contain("me@live.com", "because no replacement occured");
         }
 
+        [Test]
+        public void SanitizeInitialMailShouldWorkWithoutReplacement()
+        {
+            var parser = new SubjectParser();
+            var sanitizer = new OutlookWebSanitizer(parser);
+
+            var content = "Hello";
+            sanitizer.TrySanitizeHtml(ref content, new SubjectModel
+            {
+                Prefix = "",
+                RelayTarget = "ext@user.foo",
+                Subject = "Test"
+            }, "me@live.com", "me@mydomain.com").Should().BeTrue();
+            content.Should().Be("Hello");
+
+            sanitizer.TrySanitizePlainText(ref content, new SubjectModel
+            {
+                Prefix = "",
+                RelayTarget = "ext@user.foo",
+                Subject = "Test"
+            }, "me@live.com", "me@mydomain.com").Should().BeTrue();
+            content.Should().Be("Hello");
+        }
     }
 }

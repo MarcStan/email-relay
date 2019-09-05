@@ -10,20 +10,24 @@ namespace EmailRelay.Logic.Sanitizers
     /// </summary>
     public class OutlookWebSanitizer : IMetadataSanitizer
     {
+        /// <summary>
+        /// Allows both escaped and unescaped newline as well as linux or windows
+        /// </summary>
+        private const string _newLineRegex = "(\r\n|\r|\\r\\n|\\r)";
+
+        private static string[] _supportedDomains => new[]
+        {
+            "@live.com",
+            "@outlook.com",
+            "@hotmail.com"
+        };
+
         private readonly SubjectParser _subjectParser;
 
         public OutlookWebSanitizer(SubjectParser subjectParser)
         {
             _subjectParser = subjectParser ?? throw new ArgumentNullException(nameof(subjectParser));
         }
-
-
-        private string[] _supportedDomains => new[]
-        {
-            "@live.com",
-            "@outlook.com",
-            "@hotmail.com"
-        };
 
         public bool CanSanitizeContentFrom(string email)
         {
@@ -67,8 +71,9 @@ namespace EmailRelay.Logic.Sanitizers
              */
             // email format "email <email>" works because sendgrid has no concept of contacts so it can't resolve those to actual names - ever
             var regex = new Regex(
-                $"From:.*?(?<from>{to} <{to}>|{to})\r?\nSent: .*\r?\n" +
-                $"To: (?<to>{relayTargetEmail} <{relayTargetEmail}>|{relayTargetEmail})\r?\n" +
+                $"From:.*?(?<from>{to} <{to}>|{to}){_newLineRegex}" +
+                $"Sent: .*{_newLineRegex}" +
+                $"To: (?<to>{relayTargetEmail} <{relayTargetEmail}>|{relayTargetEmail}){_newLineRegex}" +
                 $"Subject: {subject.Prefix}(?<subject>{_subjectParser.Prefix}\\s?{subject.RelayTarget}:\\s)", RegexOptions.Multiline);
             var match = regex.Match(content);
             if (!match.Success)
@@ -84,6 +89,7 @@ namespace EmailRelay.Logic.Sanitizers
                     content.Contains("Subject:"))
                     return false;
                 // no metadata, assume initial email
+                return true;
             }
             // replace all private information with the expected
             var fromGroup = match.Groups["from"];
@@ -112,15 +118,16 @@ namespace EmailRelay.Logic.Sanitizers
             // based on this block:
 
             /*
-<div id=\"divRplyFwdMsg\" dir=\"ltr\"><font face=\"Calibri, sans-serif\" style=\"font-size:11pt\" color=\"#000000\"><b>From:</b> me@mydomain.com &lt;me@mydomain.com&gt;<br>
-<b>Sent:</b> 01 September 2019 10:10<br>
-<b>To:</b> me@myprivateemail.com &lt;me@myprivateemail.com&gt;<br>
-<b>Subject:</b> Relay for ext@user.foo: Subject1</font>
+    <div id=\"divRplyFwdMsg\" dir=\"ltr\"><font face=\"Calibri, sans-serif\" style=\"font-size:11pt\" color=\"#000000\"><b>From:</b> me@mydomain.com &lt;me@mydomain.com&gt;<br>
+    <b>Sent:</b> 01 September 2019 10:10<br>
+    <b>To:</b> me@myprivateemail.com &lt;me@myprivateemail.com&gt;<br>
+    <b>Subject:</b> Relay for ext@user.foo: Subject1</font>
              */
 
             var regex = new Regex(
-                $"From:.*?(?<from>{to} &lt;{to}&gt;|{to}).*?\n.*?Sent:.*\r?\n" +
-                $".*?To:.*?(?<to>{relayTargetEmail} &lt;{relayTargetEmail}&gt;|{relayTargetEmail}).*\r?\n" +
+                $"From:.*?(?<from>{to} &lt;{to}&gt;|{to}).*?{_newLineRegex}?" +
+                $".*?Sent:.*{_newLineRegex}?" +
+                $".*?To:.*?(?<to>{relayTargetEmail} &lt;{relayTargetEmail}&gt;|{relayTargetEmail}).*{_newLineRegex}?" +
                 $".*?Subject:.*?{subject.Prefix}(?<subject>{_subjectParser.Prefix}\\s?{subject.RelayTarget}).*?:\\s+.*"
                 , RegexOptions.Multiline);
             var match = regex.Match(content);
@@ -137,6 +144,7 @@ namespace EmailRelay.Logic.Sanitizers
                     content.Contains("Subject:"))
                     return false;
                 // no metadata, assume initial email
+                return true;
             }
             // replace all private information with the expected
             var fromGroup = match.Groups["from"];
