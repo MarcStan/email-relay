@@ -1,0 +1,40 @@
+﻿<html>
+<head>
+<meta http-equiv=\"Content-Type\" content=\"text/html; charset=us-ascii\">
+<style type=\"text/css\" style=\"display:none;\"> P {margin-top:0;margin-bottom:0;} </style>
+</head>
+<body dir=\"ltr\">
+<div style=\"font-family: Calibri, Helvetica, sans-serif; font-size: 12pt; color: rgb(0, 0, 0);\">
+This is a response to an external user. Note how the below "appendonsend" section has respectively the private email and domain email in Sent and To, when it should be external user and domain respectively<br>
+</div>
+<div style=\"font-family: Calibri, Helvetica, sans-serif; font-size: 12pt; color: rgb(0, 0, 0);\">
+<br>
+</div>
+<div id=\"Signature\">
+<div id=\"divtagdefaultwrapper\" style=\"font-size:12pt; color:#000000; font-family:Calibri,Arial,Helvetica,sans-serif\">
+Signature,
+<div>goes here</div>
+</div>
+</div>
+<div id=\"appendonsend\"></div>
+<hr style=\"display:inline-block;width:98%\" tabindex=\"-1\">
+<div id=\"divRplyFwdMsg\" dir=\"ltr\"><font face=\"Calibri, sans-serif\" style=\"font-size:11pt\" color=\"#000000\"><b>From:</b> me@mydomain.com &lt;me@mydomain.com&gt;<br>
+<b>Sent:</b> 01 September 2019 10:10<br>
+<b>To:</b> me@live.com &lt;me@live.com&gt;<br>
+<b>Subject:</b> Relay for ext@user.foo: Subject1</font>
+<div>&nbsp;</div>
+</div>
+<style type=\"text/css\" style=\"display:none\">
+<!--
+p
+\t{margin-top:0;
+\tmargin-bottom:0}
+-->
+</style>
+<div dir=\"ltr\">
+<div style=\"font-family:Calibri,Arial,Helvetica,sans-serif; font-size:12pt; color:rgb(0,0,0)\">
+Original message from external user (which is added into the response when replying)<br>
+</div>
+</div>
+</body>
+</html>

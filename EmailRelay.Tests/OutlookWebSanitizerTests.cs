@@ -4,6 +4,7 @@ using EmailRelay.Logic.Models;
 using EmailRelay.Logic.Sanitizers;
 using FluentAssertions;
 using NUnit.Framework;
+using System.IO;
 
 namespace EmailRelay.Tests
 {
@@ -54,6 +55,52 @@ This is the original message from someone";
                 RelayTarget = "ext@user.foo",
                 Subject = "Test"
             }, "me@live.com", "me@domain.com").Should().BeFalse();
+        }
+
+        [Test]
+        public void SanitizeHtmlShouldWork()
+        {
+            var parser = new SubjectParser();
+            var sanitizer = new OutlookWebSanitizer(parser);
+
+            var content = File.ReadAllText("Data/outlook-html-email.txt");
+            sanitizer.TrySanitizeHtml(ref content, new SubjectModel
+            {
+                Prefix = "",
+                RelayTarget = "ext@user.foo",
+                Subject = "Test"
+            }, "me@live.com", "me@mydomain.com").Should().BeTrue();
+        }
+
+        [Test]
+        public void SanitizeHtmlWithPrefixShouldWork()
+        {
+            var parser = new SubjectParser();
+            var sanitizer = new OutlookWebSanitizer(parser);
+
+            var content = File.ReadAllText("Data/outlook-html-email.txt").Replace("Relay for ", "RE: Relay for ");
+            sanitizer.TrySanitizeHtml(ref content, new SubjectModel
+            {
+                Prefix = "RE: ",
+                RelayTarget = "ext@user.foo",
+                Subject = "Test"
+            }, "me@live.com", "me@mydomain.com").Should().BeTrue();
+        }
+
+        [Test]
+        public void SanitizeHtmlShouldFailIfNotMatched()
+        {
+            var parser = new SubjectParser();
+            var sanitizer = new OutlookWebSanitizer(parser);
+
+            var content = File.ReadAllText("Data/outlook-html-email.txt").Replace("me@mydomain.com", "me@mismatcheddomain.com");
+            sanitizer.TrySanitizeHtml(ref content, new SubjectModel
+            {
+                Prefix = "RE: ",
+                RelayTarget = "ext@user.foo",
+                Subject = "Test"
+            }, "me@live.com", "me@mydomain.com").Should().BeFalse();
+            content.Should().Contain("me@live.com", "because no replacement occured");
         }
 
     }
