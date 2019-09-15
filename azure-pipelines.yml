@@ -65,13 +65,15 @@ stages:
         targetPath: deploy
         artifactName: deploy
 
-- stage: deploy
+- stage: release
   jobs:
   - job: infra
     pool:
       name: 'Hosted Windows 2019 with VS2019'
     variables:
-      ResourceGroupName: 'email-relay'
+    - group: 'Deployment Credentials'
+    - name: ResourceGroupName
+      value: 'email-relay'
 
     steps:
     - task: DownloadPipelineArtifact@1
@@ -92,7 +94,9 @@ stages:
     pool:
       name: 'Hosted Windows 2019 with VS2019'
     variables:
-      ResourceGroupName: 'email-relay'
+    - group: 'Deployment Credentials'
+    - name: ResourceGroupName
+      value: 'email-relay'
 
     steps:
     - task: DownloadPipelineArtifact@1
