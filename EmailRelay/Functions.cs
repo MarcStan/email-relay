@@ -51,7 +51,7 @@ namespace EmailRelay
                     var d = DateTimeOffset.UtcNow;
                     // one folder per day is fine for now 
                     var id = $"{d.ToString("yyyy-MM")}/{d.ToString("dd")}/{d.ToString("HH-mm-ss")}_{email.From.Email} - {email.Subject}";
-                    await auditLogger.PersistAsync($"{id}.json", JsonConvert.SerializeObject(email));
+                    await auditLogger.PersistAsync($"{id}.json", JsonConvert.SerializeObject(email, Formatting.Indented));
                     // save all attachments in subfolder
                     await Task.WhenAll(email.Attachments.Select(a => auditLogger.PersistAsync($"{id} (Attachments)/{a.FileName}", Convert.FromBase64String(a.Base64Data))));
                 }
