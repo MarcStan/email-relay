@@ -2,9 +2,7 @@
 
 Send & receive emails via an azure function. Processes the Sendgrid Inbound Parse webhook to make it work.
 
-[Go to release](https://dev.azure.com/marcstanlive/Opensource/_build/definition?definitionId=33) 
-
-![EmailRelay](https://dev.azure.com/marcstanlive/Opensource/_apis/build/status/33)
+[![EmailRelay](https://dev.azure.com/marcstanlive/Opensource/_apis/build/status/33)](https://dev.azure.com/marcstanlive/Opensource/_build/definition?definitionId=33) 
 
 # Motivation
 

@@ -21,7 +21,7 @@ stages:
   jobs:
   - job: build
     pool:
-      name: 'Hosted Windows 2019 with VS2019'
+      name: 'windows-latest'
     variables:
       BuildConfiguration: 'release'
     steps:
@@ -30,7 +30,7 @@ stages:
     - task: UseDotNet@2
       inputs:
         packageType: 'sdk'
-        version: '2.2.x'
+        useGlobalJson: true
 
     - task: DotNetCoreCLI@2
       displayName: Build
@@ -69,7 +69,7 @@ stages:
   jobs:
   - job: infra
     pool:
-      name: 'Hosted Windows 2019 with VS2019'
+      name: 'windows-latest'
     variables:
     - group: 'Deployment Credentials'
     - name: ResourceGroupName
@@ -92,7 +92,7 @@ stages:
   - job: deploy
     dependsOn: infra
     pool:
-      name: 'Hosted Windows 2019 with VS2019'
+      name: 'windows-latest'
     variables:
     - group: 'Deployment Credentials'
     - group: 'Sendgrid'
