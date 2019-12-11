@@ -21,7 +21,7 @@ stages:
   jobs:
   - job: build
     pool:
-      name: 'windows-latest'
+      vmImage: 'windows-latest'
     variables:
       BuildConfiguration: 'release'
     steps:
@@ -69,7 +69,7 @@ stages:
   jobs:
   - job: infra
     pool:
-      name: 'windows-latest'
+      vmImage: 'windows-latest'
     variables:
     - group: 'Deployment Credentials'
     - name: ResourceGroupName
@@ -92,7 +92,7 @@ stages:
   - job: deploy
     dependsOn: infra
     pool:
-      name: 'windows-latest'
+      vmImage: 'windows-latest'
     variables:
     - group: 'Deployment Credentials'
     - group: 'Sendgrid'
