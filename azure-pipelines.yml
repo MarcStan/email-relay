@@ -30,7 +30,7 @@ stages:
     - task: UseDotNet@2
       inputs:
         packageType: 'sdk'
-        version: '2.2.x'
+        useGlobalJson: true
 
     - task: DotNetCoreCLI@2
       displayName: Build
