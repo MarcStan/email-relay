@@ -52,7 +52,8 @@ namespace EmailRelay.Logic
             // find the first @domain email as we'll be sending in its name
             // important to match by domain as user could CC any number of others and put domain not-first
             var recipients = email.To.Concat(email.Cc).Select(e => e.Email).Distinct();
-            var to = recipients.FirstOrDefault(_ => _.EndsWith(domain, StringComparison.OrdinalIgnoreCase)) ?? throw new NotSupportedException($"Unable to process email without at least one {domain} entry");
+            // use fallback incase email was BCC'ed to us
+            var to = recipients.FirstOrDefault(_ => _.EndsWith(domain, StringComparison.OrdinalIgnoreCase)) ?? "unknown" + domain;
 
             var subject = _subjectParser.Parse(email.Subject);
             // check if subject contains required prefix "Relay for email"
