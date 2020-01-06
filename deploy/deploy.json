@@ -132,7 +132,7 @@
                         "javaVersion": null,
                         "javaContainer": null,
                         "javaContainerVersion": null,
-                        "use32BitWorkerProcess": false,
+                        "use32BitWorkerProcess": true,
                         "loadBalancing": "LeastRequests",
                         "minTlsVersion": "1.2",
                         "ftpsState": "Disabled"
