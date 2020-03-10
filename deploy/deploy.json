@@ -10,7 +10,6 @@
         "hostingPlanName": "[resourceGroup().name]"
     },
     "resources": [
-        // App insights
         {
             "type": "microsoft.insights/components",
             "kind": "other",
@@ -25,7 +24,6 @@
             },
             "dependsOn": []
         },
-        // Storage account
         {
             "type": "Microsoft.Storage/storageAccounts",
             "sku": {
@@ -54,7 +52,6 @@
             },
             "dependsOn": []
         },
-        // Consumption plan for function app
         {
             "type": "Microsoft.Web/serverfarms",
             "apiVersion": "2018-02-01",
@@ -64,7 +61,6 @@
                 "name": "Y1"
             }
         },
-        // Function app
         {
             "apiVersion": "2015-08-01",
             "type": "Microsoft.Web/sites",
