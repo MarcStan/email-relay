@@ -18,7 +18,7 @@ jobs:
     - name: test
       run: dotnet test -c Release --no-build **/*.Test*.csproj
     - name: publish
-      run: dotnet publish -c Release --no-build EmailBugTracker/EmailBugTracker.csproj -o release/EmailBugTracker
+      run: dotnet publish -c Release --no-build EmailRelay/EmailRelay.csproj -o release/EmailRelay
     - uses: actions/upload-artifact@v1
       with:
         name: deploy
@@ -26,7 +26,7 @@ jobs:
     - uses: actions/upload-artifact@v1
       with:
         name: functionapp
-        path: release/EmailBugTracker
+        path: release/EmailRelay
   release:
     runs-on: ubuntu-latest
     needs: build
