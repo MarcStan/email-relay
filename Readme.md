@@ -2,8 +2,6 @@
 
 Send & receive emails via an azure function. Processes the Sendgrid Inbound Parse webhook to make it work.
 
-[![EmailRelay](https://dev.azure.com/marcstanlive/Opensource/_apis/build/status/33)](https://dev.azure.com/marcstanlive/Opensource/_build/definition?definitionId=33) 
-
 # Motivation
 
 I recently moved from a regular app service to [storage account based static websites](https://marcstan.net/blog/2019/07/12/Static-websites-via-Azure-Storage-and-CDN/). In the process I broke my MX records and couldn't figure out quickly how to fix them. Since I [was aware of Inbound Parse](https://github.com/MarcStan/EmailBugTracker) I decided to throw together a small PoC, whether a "free" (as in freeloader) mail system via sendgrid is possible. After 1 hour the answer was yes; and this is the (somewhat) polished result.
@@ -40,19 +38,19 @@ You must first setup a Sendgrid account and connect your domain (make sure that 
 
 You can follow [their documentation](https://sendgrid.com/docs/ui/account-and-settings/how-to-set-up-domain-authentication/) to setup domain authentication.
 
-Before you deploy the azure function, be sure to set the ResourceGroupName variables (2x) and to customize the `appSettings` of the azure function deployment task in the [azure-pipelines.yml](./azure-pipelines.yml) file:
+Deployment is fully automated via Github actions. Just [setup credentials](TODO: blog post goes here), adjust the variables at the start of the yaml file (resourcegroup name) and run the action.
+
+App settings in Gitub action you may wish to adjust:
+
+* `ArchiveContainerName` - if set all incoming emails will be stored in said container (attachments will also be extracted from the email), remove to disable
+
+Additionally you must manually add these configuration values into the keyvault once it exists:
 
 * `SendgridApiKey` - key with at least `Mail Send` permissions in your Sendgrid account
 * `RelayTargetEmail` - All emails sent to the domain will be forwarded to this email
 * `Domain` - (formats example.com and `@example.com` both work). If you have setup emails for a subdomain, then set the specific subdomain mail.example.com. Only emails matching this domain are processed
 * `SendAsDomain` - set to `true` if you want to support sending mail as the domain (see [Sending mail](#Sending%20mail)). Defaults to false, which means only [Receiving mail](#Receiving%20mail) is possible
 * `Prefix` - customize the prefix needed to send emails. Defaults to "Relay for" (see also [Sending mail](#Sending%20mail))
-
-Optionally also enable this:
-
-* `ArchiveContainerName` - if set all incoming emails will be stored in said container (attachments will also be extracted from the email)
-
-Then deploy the Azure function via the [azure-pipelines.yml](./azure-pipelines.yml). The pipeline will automatically create the required infrastructure and deploy the code to it.
 
 Finally connect [sendgrid inbound parse](https://sendgrid.com/docs/for-developers/parsing-email/inbound-email/) by setting your domain mx record to `mx.sendgrid.net` and then providing the Azure function url (with function code) to the Sendgrid Inbound webhook.
 
