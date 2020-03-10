@@ -20,7 +20,7 @@ namespace EmailRelay.Logic
         /// <returns></returns>
         public Email Parse(MemoryStream body)
         {
-            var parser = new MultipartFormDataParser(body, Encoding.UTF8);
+            var parser = MultipartFormDataParser.Parse(body, Encoding.UTF8);
 
             var charsets = JObject.Parse(parser.GetParameterValue("charsets", "{}"))
                 .Properties()
@@ -53,7 +53,7 @@ namespace EmailRelay.Logic
                     return new
                     {
                         Encoding = encoding,
-                        Parser = new MultipartFormDataParser(body, encoding)
+                        Parser = MultipartFormDataParser.Parse(body, encoding)
                     };
                 })
                 .Union(new[]

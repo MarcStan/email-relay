@@ -38,7 +38,7 @@ You must first setup a Sendgrid account and connect your domain (make sure that 
 
 You can follow [their documentation](https://sendgrid.com/docs/ui/account-and-settings/how-to-set-up-domain-authentication/) to setup domain authentication.
 
-Deployment is fully automated via Github actions. Just [setup credentials](TODO: blog post goes here), adjust the variables at the start of the yaml file (resourcegroup name) and run the action.
+Deployment is fully automated via Github actions. Just [setup credentials](https://github.com/marketplace/actions/azure-login#configure-azure-credentials), adjust the variables at the start of the yaml file (resourcegroup name) and run the action.
 
 App settings in Gitub action you may wish to adjust:
 

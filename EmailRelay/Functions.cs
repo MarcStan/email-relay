@@ -3,9 +3,12 @@ using EmailRelay.Logic.Models;
 using EmailRelay.Logic.Sanitizers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.KeyVault;
+using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureKeyVault;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using SendGrid;
@@ -90,9 +93,21 @@ namespace EmailRelay
         /// </summary>
         private static IConfiguration LoadConfig(string workingDirectory, ILogger log)
         {
-            var builder = new ConfigurationBuilder()
+            var tokenProvider = new AzureServiceTokenProvider();
+            var kvClient = new KeyVaultClient((authority, resource, scope)
+                => tokenProvider.KeyVaultTokenCallback(authority, resource, scope));
+
+            var keyVaultName = new ConfigurationBuilder()
             .SetBasePath(workingDirectory)
             .AddJsonFile("local.settings.json", optional: true)
+            .AddEnvironmentVariables()
+            .Build()["KeyVaultName"];
+            if (string.IsNullOrEmpty(keyVaultName))
+                throw new NotSupportedException("KeyVaultName is not configured!");
+
+            var builder = new ConfigurationBuilder()
+            .AddJsonFile("local.settings.json", optional: true)
+            .AddAzureKeyVault($"https://{keyVaultName}.vault.azure.net", kvClient, new DefaultKeyVaultSecretManager())
             .AddEnvironmentVariables();
             return builder.Build();
         }

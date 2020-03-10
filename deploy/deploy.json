@@ -1,9 +1,11 @@
 {
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
-    "parameters": {},
+    "parameters": {
+    },
     "variables": {
         "appInsightsName": "[resourceGroup().name]",
+        "keyVaultName": "[resourceGroup().name]",
         "storageAccountName": "[toLower(replace(resourceGroup().name, '-', ''))]",
         "storageAccountId": "[concat(resourceGroup().id,'/providers/','Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
         "functionAppName": "[resourceGroup().name]",
@@ -16,13 +18,46 @@
             "name": "[variables('appInsightsName')]",
             "apiVersion": "2015-05-01",
             "location": "[resourceGroup().location]",
-            "tags": {},
+            "tags": {
+            },
             "scale": null,
             "properties": {
                 "ApplicationId": "[variables('appInsightsName')]",
                 "Application_Type": "web"
             },
-            "dependsOn": []
+            "dependsOn": [
+            ]
+        },
+        {
+            "type": "Microsoft.KeyVault/vaults",
+            "apiVersion": "2016-10-01",
+            "name": "[variables('keyVaultName')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]"
+            ],
+            "properties": {
+                "sku": {
+                    "family": "A",
+                    "name": "standard"
+                },
+                "tenantId": "[subscription().tenantId]",
+                "accessPolicies": [
+                    {
+                        "tenantId": "[reference(resourceId('Microsoft.Web/sites', variables('functionAppName')), '2016-08-01', 'Full').identity.tenantId]",
+                        "objectId": "[reference(resourceId('Microsoft.Web/sites', variables('functionAppName')), '2016-08-01', 'Full').identity.principalId]",
+                        "permissions": {
+                            "secrets": [
+                                "get",
+                                "list"
+                            ]
+                        }
+                    }
+                ],
+                "enabledForDeployment": false,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": false
+            }
         },
         {
             "type": "Microsoft.Storage/storageAccounts",
@@ -34,7 +69,8 @@
             "name": "[variables('storageAccountName')]",
             "apiVersion": "2018-07-01",
             "location": "[resourceGroup().location]",
-            "tags": {},
+            "tags": {
+            },
             "properties": {
                 "supportsHttpsTrafficOnly": true,
                 "encryption": {
@@ -50,7 +86,8 @@
                 },
                 "accessTier": "Hot"
             },
-            "dependsOn": []
+            "dependsOn": [
+            ]
         },
         {
             "type": "Microsoft.Web/serverfarms",
@@ -100,7 +137,9 @@
                         "WEBSITE_CONTENTSHARE": "[toLower(variables('functionAppName'))]",
                         "FUNCTIONS_EXTENSION_VERSION": "~3",
                         "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('microsoft.insights/components/', variables('appInsightsName')), '2015-05-01').InstrumentationKey]",
-                        "FUNCTIONS_WORKER_RUNTIME": "dotnet"
+                        "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+                        "KeyVaultName": "[variables('keyVaultName')]",
+                        "WEBSTE_RUN_FROM_PACKAGE": "1"
                     }
                 }
             ]
