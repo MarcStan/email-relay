@@ -9,8 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-dotnet@v1
+    - uses: actions/checkout@01aecccf739ca6ff86c0539fbc67a7a5007bbc81 # pin@v2 
+    - uses: actions/setup-dotnet@b7821147f564527086410e8edd122d89b4b9602f # pin@v1 
       with:
         dotnet-version: 3.1.100
     - name: build
@@ -19,11 +19,11 @@ jobs:
       run: dotnet test -c Release --no-build **/*.Test*.csproj
     - name: publish
       run: dotnet publish -c Release --no-build EmailRelay/EmailRelay.csproj -o release/EmailRelay
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@3446296876d12d4e3a0f3145a3c87e67bf0a16b5 # pin@v1 
       with:
         name: deploy
         path: deploy
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@3446296876d12d4e3a0f3145a3c87e67bf0a16b5 # pin@v1 
       with:
         name: functionapp
         path: release/EmailRelay
@@ -31,11 +31,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e # pin@v1 
         with:
           name: functionapp
           path: functionapp
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e # pin@v1 
         with:
           name: deploy
           path: deploy
@@ -50,11 +50,11 @@ jobs:
             cd deploy
             chmod +x deploy.sh
             ./deploy.sh $ResourceGroup
-      - uses: azure/appservice-settings@v1
+      - uses: azure/appservice-settings@38e1416179ed5b88df5691739af8441428da867b # pin@v1 
         with:
           app-name: ${{ env.ResourceGroup }}
           app-settings-json: '[ { "name": "ArchiveContainerName", "value": "emails" } ]'
-      - uses: azure/functions-action@v1
+      - uses: azure/functions-action@6042d67de76fd158d51281ddb40a22c3e1c1e1d1 # pin@v1 
         with:
           app-name: ${{ env.ResourceGroup }}
           package: functionapp
