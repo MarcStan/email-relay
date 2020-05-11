@@ -1,6 +1,8 @@
 # Sendgrid based EmailRelay
 
-Send & receive emails via an azure function. Processes the Sendgrid Inbound Parse webhook to make it work.
+Send & receive emails via an azure function (no mail package required!).
+
+Processes the Sendgrid Inbound Parse webhook to make it work.
 
 # Motivation
 
