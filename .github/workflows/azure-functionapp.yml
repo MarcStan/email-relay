@@ -12,7 +12,7 @@ jobs:
     - uses: actions/checkout@01aecccf739ca6ff86c0539fbc67a7a5007bbc81 # pin@v2 
     - uses: actions/setup-dotnet@b7821147f564527086410e8edd122d89b4b9602f # pin@v1 
       with:
-        dotnet-version: 3.1.100
+        dotnet-version: 3.1.201
     - name: build
       run: dotnet build -c Release
     - name: test
