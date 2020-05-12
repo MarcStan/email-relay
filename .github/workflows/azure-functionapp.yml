@@ -50,10 +50,6 @@ jobs:
             cd deploy
             chmod +x deploy.sh
             ./deploy.sh $ResourceGroup
-      - uses: azure/appservice-settings@38e1416179ed5b88df5691739af8441428da867b # pin@v1 
-        with:
-          app-name: ${{ env.ResourceGroup }}
-          app-settings-json: '[ { "name": "ArchiveContainerName", "value": "emails" } ]'
       - uses: azure/functions-action@6042d67de76fd158d51281ddb40a22c3e1c1e1d1 # pin@v1 
         with:
           app-name: ${{ env.ResourceGroup }}
