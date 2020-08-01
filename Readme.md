@@ -4,6 +4,12 @@ Send & receive emails via an azure function (no mail package required!).
 
 Processes the Sendgrid Inbound Parse webhook to make it work.
 
+# :warning: Deprecated
+
+I no longer use this and have instead built [email-fanout](https://github.com/MarcStan/email-fanout) which is more flexible.
+
+The only feature that I haven't ported to email-fanout is sending emails as the domain account (the email-fanout will instead have you send mails from your private account instead).
+
 # Motivation
 
 I recently moved from a regular app service to [storage account based static websites](https://marcstan.net/blog/2019/07/12/Static-websites-via-Azure-Storage-and-CDN/). In the process I broke my MX records and couldn't figure out quickly how to fix them. Since I [was aware of Inbound Parse](https://github.com/MarcStan/EmailBugTracker) I decided to throw together a small PoC, whether a "free" (as in freeloader) mail system via sendgrid is possible. After 1 hour the answer was yes; and this is the (somewhat) polished result.
