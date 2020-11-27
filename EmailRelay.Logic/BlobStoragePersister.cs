@@ -1,5 +1,5 @@
-﻿using Microsoft.Azure.WebJobs;
-using Microsoft.WindowsAzure.Storage.Blob;
+﻿using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.WebJobs;
 using System.Threading.Tasks;
 
 namespace EmailRelay.Logic

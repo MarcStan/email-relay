@@ -6,17 +6,20 @@ Processes the Sendgrid Inbound Parse webhook to make it work.
 
 # :warning: Deprecated
 
-I no longer use this and have instead built [email-fanout](https://github.com/MarcStan/email-fanout) which is more flexible.
+I have built [email-fanout](https://github.com/MarcStan/email-fanout) which is more flexible and largely replaces this function.
 
-The only feature that I haven't ported to email-fanout is sending emails as the domain account (the email-fanout will instead have you send mails from your private account instead).
+The only feature that I haven't ported to email-fanout is sending emails as the domain account (the email-fanout will instead have you send mails from your private account instead) due to the feature being cumbersome to use.
+
+It is however possible to chain the email-relay behind the email-fanout to get the best of both.
 
 # Motivation
 
-I recently moved from a regular app service to [storage account based static websites](https://marcstan.net/blog/2019/07/12/Static-websites-via-Azure-Storage-and-CDN/). In the process I broke my MX records and couldn't figure out quickly how to fix them. Since I [was aware of Inbound Parse](https://github.com/MarcStan/EmailBugTracker) I decided to throw together a small PoC, whether a "free" (as in freeloader) mail system via sendgrid is possible. After 1 hour the answer was yes; and this is the (somewhat) polished result.
+I recently moved from a regular app service to [storage account based static websites](https://marcstan.net/blog/2019/07/12/Static-websites-via-Azure-Storage-and-CDN/). In the process I broke my MX records and couldn't figure out quickly how to fix them. Since [I was aware of Sendgrid Inbound Parse](https://github.com/MarcStan/EmailBugTracker) I decided to throw together a small PoC, whether a "free" (as in freeloader) mail system via sendgrid is possible. After 1 hour the answer was yes; and this is the (somewhat) polished result.
 
 # Features
 
 * works for domains even without a mail package
+* catch-all works out of the box!
 * receive emails for a domain at your private email address (using Sendgrid Inbound Parse)
 * send emails in the name of the domain by replying back to the domain from your private email address
 
