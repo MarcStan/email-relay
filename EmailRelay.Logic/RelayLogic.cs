@@ -174,7 +174,15 @@ namespace EmailRelay.Logic
 
         private async Task SendEmailAsync(string from, string to, string subject, string content, EmailAttachment[] attachments, CancellationToken cancellationToken)
         {
-            var mail = MailHelper.CreateSingleEmail(new EmailAddress(from), new EmailAddress(to), subject, null, content);
+            string EnsureNotEmpty(string message)
+            {
+                // pgp signed emails have no content but attachments only;
+                // seems to be this bug
+                // https://github.com/sendgrid/sendgrid-nodejs/issues/435
+                return string.IsNullOrEmpty(message) ? " " : message;
+            }
+
+            var mail = MailHelper.CreateSingleEmail(new EmailAddress(from), new EmailAddress(to), subject, null, EnsureNotEmpty(content));
             foreach (var attachment in attachments)
             {
                 mail.AddAttachment(new Attachment
