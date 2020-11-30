@@ -1,10 +1,12 @@
 ﻿using EmailRelay.Logic.Models;
 using Microsoft.Extensions.Logging;
 using SendGrid;
+using SendGrid.Helpers.Errors.Model;
 using SendGrid.Helpers.Mail;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -183,7 +185,12 @@ namespace EmailRelay.Logic
                     Type = attachment.ContentType
                 });
             }
-            await _client.SendEmailAsync(mail, cancellationToken);
+            var response = await _client.SendEmailAsync(mail, cancellationToken);
+            if (response.StatusCode != HttpStatusCode.Accepted)
+            {
+                var errorResponse = await response.Body.ReadAsStringAsync();
+                throw new BadRequestException($"Sendgrid did not accept. The response was: {response.StatusCode}." + Environment.NewLine + errorResponse);
+            }
         }
     }
 }
