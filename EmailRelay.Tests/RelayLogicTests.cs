@@ -1,12 +1,17 @@
 ﻿using EmailRelay.Logic;
 using EmailRelay.Logic.Models;
 using EmailRelay.Logic.Sanitizers;
+using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Newtonsoft.Json;
 using NUnit.Framework;
 using SendGrid;
+using SendGrid.Helpers.Errors.Model;
 using SendGrid.Helpers.Mail;
 using System;
+using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,9 +23,60 @@ namespace EmailRelay.Tests
             => new[] { new FakeSanitizer() };
 
         [Test]
+        public async Task SendGridErrorShouldAbort()
+        {
+            var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.BadRequest, new StringContent(JsonConvert.SerializeObject(new
+                {
+                    error = "Sendgrid service unavailable"
+                }), Encoding.UTF8, "application/json"), null));
+
+            var logger = new Mock<ILogger>();
+            var parser = new SubjectParser();
+            var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
+
+            await new Func<Task>(async () => await relay.RelayAsync(new Email
+            {
+                From = new EmailAddress
+                {
+                    Email = "ext@user.foo"
+                },
+                To = new[]
+                {
+                    new EmailAddress
+                    {
+                        Email = "me@domain.com"
+                    }
+                },
+                Html = "Foo",
+                Subject = "Inquiry"
+            },
+            "me@privatemail.example.com",
+            "domain.com",
+            true,
+            CancellationToken.None))
+                .Should().ThrowAsync<BadRequestException>();
+
+            client.Verify(x => x.SendEmailAsync(It.Is<SendGridMessage>(m =>
+                m.From.Email == "me@domain.com" &&
+                m.Personalizations.Count == 1 &&
+                m.Personalizations[0].Tos.Count == 1 &&
+                m.Personalizations[0].Tos[0].Email == "me@privatemail.example.com" &&
+                m.Personalizations[0].Subject == "Relay for ext@user.foo: Inquiry"),
+                It.IsAny<CancellationToken>()));
+
+            client.VerifyNoOtherCalls();
+            logger.VerifyNoOtherCalls();
+        }
+
+        [Test]
         public async Task MailFromExternalUserShouldBeRelayedToTarget()
         {
             var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.Accepted, null, null));
+
             var logger = new Mock<ILogger>();
             var parser = new SubjectParser();
             var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
@@ -62,6 +118,9 @@ namespace EmailRelay.Tests
         public async Task SendingEmailFromTargetToDomainShouldBeRelayedBackToTarget()
         {
             var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.Accepted, null, null));
+
             var logger = new Mock<ILogger>();
             var parser = new SubjectParser();
             var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
@@ -99,6 +158,10 @@ namespace EmailRelay.Tests
         public async Task SendingEmailFromTargetToDomainWithSpecialSubjectShouldSendAsDomainToExternalUser()
         {
             var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.Accepted, null, null));
+
+
             var logger = new Mock<ILogger>();
             var parser = new SubjectParser();
             var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
@@ -138,6 +201,10 @@ namespace EmailRelay.Tests
         public async Task SendingEmailReplyFromTargetToDomainWithSpecialSubjectShouldSendAsDomainToExternalUserAndReplacePrivateMailInMetadataOfBody_customRelayTarget()
         {
             var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.Accepted, null, null));
+
+
             var logger = new Mock<ILogger>();
             var parser = new SubjectParser("Email Relay:");
             var relay = new RelayLogic(client.Object, parser, logger.Object, new[] { new OutlookWebSanitizer(parser) });
@@ -191,6 +258,10 @@ This is the original message from someone",
         public async Task SendingEmailReplyFromTargetToDomainWithSpecialSubjectShouldSendAsDomainToExternalUserAndReplacePrivateMailInMetadataOfBody_defaultRelayTarget()
         {
             var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.Accepted, null, null));
+
+
             var logger = new Mock<ILogger>();
             var parser = new SubjectParser();
             var relay = new RelayLogic(client.Object, parser, logger.Object, new[] { new OutlookWebSanitizer(parser) });
@@ -244,6 +315,10 @@ This is the original message from someone",
         public async Task SendingEmailReplyFromTargetToDomainWithSpecialSubjectShouldSendAsDomainToExternalUserAndReplacePrivateMailInMetadataOfBody_WithSubjectPrefix()
         {
             var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.Accepted, null, null));
+
+
             var logger = new Mock<ILogger>();
             var parser = new SubjectParser();
             var relay = new RelayLogic(client.Object, parser, logger.Object, new[] { new OutlookWebSanitizer(parser) });
@@ -297,6 +372,10 @@ This is the original message from someone",
         public async Task SendingEmailFromTargetToDomainWithSpecialSubjectShouldSendWarningToOwnerIfSendAsDomainIsDisabled()
         {
             var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.Accepted, null, null));
+
+
             var logger = new Mock<ILogger>();
             var parser = new SubjectParser();
             var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
@@ -336,6 +415,10 @@ This is the original message from someone",
         public async Task SendingEmailFromTargetToDomainWithWrongSubjectShouldSendRegularEmailToOwner()
         {
             var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.Accepted, null, null));
+
+
             var logger = new Mock<ILogger>();
             var parser = new SubjectParser("this is the correct prefix for");
             var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
@@ -374,6 +457,10 @@ This is the original message from someone",
         public async Task SendingEmailFromTargetToDomainWithSpecialSubjectShouldSendAsDomainToSelf()
         {
             var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.Accepted, null, null));
+
+
             var logger = new Mock<ILogger>();
             var parser = new SubjectParser();
             var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
@@ -413,6 +500,10 @@ This is the original message from someone",
         public async Task MailWithMultipleRecipientsShouldBeSentToFirstDomain()
         {
             var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.Accepted, null, null));
+
+
             var logger = new Mock<ILogger>();
             var parser = new SubjectParser();
             var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
@@ -465,6 +556,10 @@ This is the original message from someone",
         public async Task SpecialSubjectFromExternalUserShouldBeLoggedAndNotSendFromDomain()
         {
             var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.Accepted, null, null));
+
+
             var logger = new Mock<ILogger>();
             var parser = new SubjectParser();
             var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
@@ -506,6 +601,10 @@ This is the original message from someone",
         public async Task SpecialSubjectFromSpoofedUserShouldBeLoggedAndNotSendFromDomain()
         {
             var client = new Mock<ISendGridClient>();
+            client.Setup(x => x.SendEmailAsync(It.IsAny<SendGridMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Response(System.Net.HttpStatusCode.Accepted, null, null));
+
+
             var logger = new Mock<ILogger>();
             var parser = new SubjectParser();
             var relay = new RelayLogic(client.Object, parser, logger.Object, GetDefaultSanitizers());
